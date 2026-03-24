@@ -1,0 +1,13 @@
+[package]
+name = "kernel"
+version = "0.0.1"
+authors = ["Sébastien Laclau <seb.laclau@gmail.com>"]
+edition = "2024"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+hal = { path = "../hal" }
+lazy_static = { version = "1.5.0", features = ["spin", "spin_no_std"] }
+spin = "0.10.0"
