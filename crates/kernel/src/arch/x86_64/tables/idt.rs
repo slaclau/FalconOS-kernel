@@ -81,10 +81,11 @@ impl Entry {
         Self::new(0, cs, EntryOptions::minimal())
     }
 
-    pub unsafe fn set_handler_addr(&mut self, handler_addr: u64) {
+    pub unsafe fn set_handler_addr(&mut self, handler_addr: u64) -> &mut Self {
         self.pointer_low = handler_addr as u16;
         self.pointer_middle = (handler_addr >> 16) as u16;
         self.pointer_high = (handler_addr >> 32) as u32;
+        self
     }
 }
 
@@ -105,12 +106,12 @@ impl EntryOptions {
     }
 
     pub fn get_stack_index(self) -> u8 {
-        ((self.0 << 13) >> 13) as u8
+        (((self.0 << 13) >> 13) -1) as u8
     }
 
     pub fn set_stack_index(&mut self, stack_index: u8) -> &mut Self {
         assert!(stack_index <= 7);
-        self.0 = (self.0 >> 3) << 3 | stack_index as u16;
+        self.0 = (self.0 >> 3) << 3 | (stack_index + 1) as u16;
         self
     }
 
