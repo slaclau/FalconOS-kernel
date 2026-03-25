@@ -21,7 +21,7 @@ run: $(iso)
 	@qemu-system-x86_64 -cdrom $(iso) -no-reboot -s
 
 debug: $(iso)
-	@qemu-system-x86_64 -cdrom $(iso) -no-reboot -s -d int
+	@qemu-system-x86_64 -cdrom $(iso) -no-reboot -no-shutdown -s -d int
 
 gdb:
 	@gdb $(kernel) -ex "target remote :1234"
