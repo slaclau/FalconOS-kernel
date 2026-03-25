@@ -144,7 +144,8 @@ fn enable_timer() {
         unsafe { pics.initialize() };
         Mutex::new(pics)
     });
-    log!(RING_BUFFER, "enabled timer (PIT)");
+    unsafe{PICS.get().unwrap().lock().write_masks(0xFE, 0xFF)};
+    log!(RING_BUFFER, "enabled timer (PIT) and masked other IRQs");
 
     hal::interrupts::enable(true);
     let enabled = hal::interrupts::are_enabled();
@@ -200,7 +201,7 @@ extern "x86-interrupt" fn timer_handler(_stack_frame: idt::StackFrame) {
             .get()
             .unwrap()
             .lock()
-            .write_fmt(format_args!("{}\n", COUNTER.get().unwrap().lock().0))
+            .write_fmt(format_args!("{},", COUNTER.get().unwrap().lock().0))
     });
     unsafe {
         PICS.get().unwrap().lock().notify_end_of_interrupt(32);

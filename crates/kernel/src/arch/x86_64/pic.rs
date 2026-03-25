@@ -93,6 +93,22 @@ impl ChainedPics {
         }
     }
 
+    pub unsafe fn is_masked(&mut self, port: u8) -> bool {
+        if port < 8 {
+            unsafe { self.master.is_masked(port) }
+        } else {
+            unsafe { self.slave.is_masked(port - 8) }
+        }
+    }
+
+    pub unsafe fn set_masked(&mut self, port: u8, masked: bool) {
+        if port < 8 {
+            unsafe { self.master.set_masked(port, masked) }
+        } else {
+            unsafe { self.slave.set_masked(port - 8, masked) }
+        }
+    }
+
     /// Do we handle this interrupt?
     pub fn handles_interrupt(&self, interrupt_id: u8) -> bool {
         self.master.handles_interrupt(interrupt_id) || self.slave.handles_interrupt(interrupt_id)
@@ -138,5 +154,22 @@ impl Pic {
     /// Writes the interrupt mask of this PIC.
     unsafe fn write_mask(&mut self, mask: u8) {
         unsafe { self.data.write(mask) }
+    }
+
+    unsafe fn is_masked(&mut self, port: u8) -> bool {
+        unsafe { self.read_mask() & (1 << port) > 0 }
+    }
+
+    unsafe fn set_masked(&mut self, port: u8, masked: bool) {
+        let old_mask = unsafe { self.read_mask() & (1 << port) };
+        let new_mask;
+        if masked {
+            new_mask = old_mask | (1 << port);
+        } else {
+            new_mask = old_mask & !(1 << port);
+        }
+        unsafe {
+            self.write_mask(new_mask);
+        }
     }
 }
