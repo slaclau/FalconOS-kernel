@@ -1,7 +1,7 @@
 use core::{arch::asm, fmt::Write};
 
 use hal::{self, interrupts::without_interrupts};
-use macros::make_handlers;
+use macros::{assign_handlers, make_handlers};
 use spin::{Mutex, Once};
 
 use crate::{
@@ -30,7 +30,6 @@ static TSS: Once<tss::TaskStateSegment> = Once::new();
 
 static PICS: Once<Mutex<ChainedPics>> = Once::new();
 const DOUBLE_FAULT_STACK_INDEX: u16 = 0;
-const TIMER_INTERRUPT: usize = 0;
 static TIMER_WRITER: Once<Mutex<Writer>> = Once::new(); // TODO: This will have a proper implementation to trigger the scheduler
 
 struct Count(u64);
@@ -125,10 +124,8 @@ fn create_and_load_idt() {
                 .options
                 .set_present(true)
                 .set_stack_index(DOUBLE_FAULT_STACK_INDEX as u8);
-            idt.interrupts()[TIMER_INTERRUPT]
-                .set_handler_addr(irq_handler_0 as *const () as u64)
-                .options
-                .set_present(true);
+
+            assign_handlers!();
         };
 
         idt
