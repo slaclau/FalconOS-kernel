@@ -1,5 +1,5 @@
 pub mod ring_buffer;
-// pub mod spin;
+pub mod bits;
 
 #[macro_export]
 macro_rules! log {
