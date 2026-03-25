@@ -95,7 +95,7 @@ impl<const LENGTH: usize> RingBuffer<LENGTH> {
         Ok(())
     }
 
-    pub fn dump(&mut self, mut writer: impl Write) {
+    pub fn dump(&mut self, writer: impl Write) {
         self.dump_with_reason("", writer);
     }
 

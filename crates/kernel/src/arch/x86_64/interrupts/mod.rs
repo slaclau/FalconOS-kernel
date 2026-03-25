@@ -5,16 +5,16 @@ use macros::{assign_handlers, make_handlers};
 use spin::{Mutex, Once};
 
 use crate::{
-    RING_BUFFER,
+    DEBUG_WRITER, RING_BUFFER,
     arch::x86_64::{
         pic::ChainedPics,
-        segmentation::{self, tss},
+        segmentation::tss,
         tables::{
             gdt::{self, load_tss},
             idt::{self, PageFaultErrorCode},
         },
     },
-    debug::{Writer, make_writer},
+    debug::make_writer,
     log,
 };
 
@@ -30,7 +30,6 @@ static TSS: Once<tss::TaskStateSegment> = Once::new();
 
 static PICS: Once<Mutex<ChainedPics>> = Once::new();
 const DOUBLE_FAULT_STACK_INDEX: u16 = 0;
-static TIMER_WRITER: Once<Mutex<Writer>> = Once::new(); // TODO: This will have a proper implementation to trigger the scheduler
 
 struct Count(u64);
 impl Count {
@@ -138,7 +137,6 @@ fn create_and_load_idt() {
 
 fn enable_timer() {
     COUNTER.call_once(|| Mutex::new(Count(0)));
-    TIMER_WRITER.call_once(|| Mutex::new(make_writer(0xb8000)));
     PICS.call_once(|| {
         let mut pics = unsafe { ChainedPics::new(32, 40) };
         unsafe { pics.initialize() };
@@ -201,11 +199,12 @@ extern "x86-interrupt" fn double_fault_handler(stack_frame: idt::StackFrame, err
 
 fn timer_handler(_stack_frame: idt::StackFrame) {
     COUNTER.get().unwrap().lock().increment();
-    TIMER_WRITER
+    DEBUG_WRITER
         .get()
         .unwrap()
         .lock()
-        .write_fmt(format_args!("{},", COUNTER.get().unwrap().lock().0));
+        .write_fmt(format_args!("{},", COUNTER.get().unwrap().lock().0))
+        .unwrap();
     unsafe {
         PICS.get().unwrap().lock().notify_end_of_interrupt(32);
     };

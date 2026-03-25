@@ -93,6 +93,7 @@ impl Entry {
 #[derive(Clone, Copy)]
 pub struct EntryOptions(u16);
 
+#[allow(unused)]
 impl EntryOptions {
     fn minimal() -> Self {
         Self::new(0, GateType::Interrupt, PrivilegeLevel::Ring0, false)

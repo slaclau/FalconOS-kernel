@@ -1,12 +1,24 @@
 use core::fmt::Write;
 
-use crate::{RING_BUFFER, debug::make_writer, log};
+use spin::{Mutex, MutexGuard, Once};
+
+use crate::{RING_BUFFER, debug::{Writer, make_writer}, log};
 
 mod interrupts;
 mod pic;
 mod port;
 mod segmentation;
 mod tables;
+
+pub static DEBUG_WRITER: Once<Mutex<Writer>> = Once::new();
+
+pub struct WriterWrapper<'a>(pub MutexGuard<'a, Writer>);
+
+impl Write for WriterWrapper<'_> {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        self.0.write_str(s)
+    }
+}
 
 unsafe extern "C" {
     static _ring_buffer_start: usize;
@@ -27,6 +39,9 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 #[unsafe(no_mangle)]
 pub extern "C" fn kernel_start(mb_ptr: u32, mb_magic: u32) -> ! {
     use crate::{RING_BUFFER, kernel_main, kernel_shared_init, log};
+
+    DEBUG_WRITER.call_once(|| Mutex::new(make_writer(0xb8000)));
+
 
     kernel_shared_init();
     log!(

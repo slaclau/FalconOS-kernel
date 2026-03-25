@@ -1,5 +1,5 @@
-use core::fmt::Write;
-use core::prelude::v1;
+#![allow(unused)]
+
 use core::{arch::asm, cmp, fmt::Debug, mem};
 
 use crate::{

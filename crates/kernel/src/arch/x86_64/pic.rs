@@ -93,6 +93,7 @@ impl ChainedPics {
         }
     }
 
+    #[allow(unused)]
     pub unsafe fn is_masked(&mut self, port: u8) -> bool {
         if port < 8 {
             unsafe { self.master.is_masked(port) }
@@ -101,6 +102,7 @@ impl ChainedPics {
         }
     }
 
+    #[allow(unused)]
     pub unsafe fn set_masked(&mut self, port: u8, masked: bool) {
         if port < 8 {
             unsafe { self.master.set_masked(port, masked) }
