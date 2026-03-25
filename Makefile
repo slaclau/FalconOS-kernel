@@ -4,10 +4,10 @@ iso := build/FalconOS-$(arch).iso
 target ?= $(arch)-unknown-none
 rust_os := target/$(target)/debug/libkernel.a
 
-linker_script := src/arch/$(arch)/linker.ld
-grub_cfg := src/arch/$(arch)/grub.cfg
-assembly_source_files := $(wildcard src/arch/$(arch)/*.asm)
-assembly_object_files := $(patsubst src/arch/$(arch)%.asm, \
+linker_script := crates/kernel/src/arch/$(arch)/loader/linker.ld
+grub_cfg := grub.cfg
+assembly_source_files := $(wildcard crates/kernel/src/arch/$(arch)/loader/*.asm)
+assembly_object_files := $(patsubst crates/kernel/src/arch/$(arch)/loader%.asm, \
 	build/arch/$(arch)/%.o, $(assembly_source_files))
 
 .PHONY: all clean run iso kernel
@@ -42,6 +42,6 @@ $(kernel): kernel $(rust_os) $(assembly_object_files) $(linker_script)
 kernel:
 	@cargo build --target $(target)
 
-build/arch/$(arch)/%.o: src/arch/$(arch)/%.asm
+build/arch/$(arch)/%.o: crates/kernel/src/arch/$(arch)/loader/%.asm
 	@mkdir -p $(shell dirname $@)
 	@nasm -felf64 $< -o $@
