@@ -1,6 +1,7 @@
 use core::{arch::asm, fmt::Write};
 
-use hal;
+use hal::{self, interrupts::without_interrupts};
+use macros::make_handlers;
 use spin::{Mutex, Once};
 
 use crate::{
@@ -39,6 +40,8 @@ impl Count {
     }
 }
 static COUNTER: Once<Mutex<Count>> = Once::new();
+
+make_handlers!();
 
 pub fn configure() {
     log!(RING_BUFFER, "interrupts::configure called");
@@ -123,7 +126,7 @@ fn create_and_load_idt() {
                 .set_present(true)
                 .set_stack_index(DOUBLE_FAULT_STACK_INDEX as u8);
             idt.interrupts()[TIMER_INTERRUPT]
-                .set_handler_addr(timer_handler as *const () as u64)
+                .set_handler_addr(irq_handler_0 as *const () as u64)
                 .options
                 .set_present(true);
         };
@@ -144,7 +147,7 @@ fn enable_timer() {
         unsafe { pics.initialize() };
         Mutex::new(pics)
     });
-    unsafe{PICS.get().unwrap().lock().write_masks(0xFE, 0xFF)};
+    unsafe { PICS.get().unwrap().lock().write_masks(0xFE, 0xFF) };
     log!(RING_BUFFER, "enabled timer (PIT) and masked other IRQs");
 
     hal::interrupts::enable(true);
@@ -168,7 +171,9 @@ extern "x86-interrupt" fn page_fault_handler(stack_frame: idt::StackFrame, error
     hal::interrupts::without_interrupts(|| {
         log!(RING_BUFFER, "PAGE FAULT {error_code:?}");
         log!(RING_BUFFER, "{stack_frame:?}");
-        RING_BUFFER.lock().dump_with_reason("PAGE FAULT", make_writer(0xb8000));
+        RING_BUFFER
+            .lock()
+            .dump_with_reason("PAGE FAULT", make_writer(0xb8000));
     });
     hal::halt();
 }
@@ -177,7 +182,9 @@ extern "x86-interrupt" fn gp_fault_handler(stack_frame: idt::StackFrame, error_c
     hal::interrupts::without_interrupts(|| {
         log!(RING_BUFFER, "GENERAL PROTECTION FAULT {error_code:?}");
         log!(RING_BUFFER, "{stack_frame:?}");
-        RING_BUFFER.lock().dump_with_reason("GENERAL PROTECTION FAULT", make_writer(0xb8000));
+        RING_BUFFER
+            .lock()
+            .dump_with_reason("GENERAL PROTECTION FAULT", make_writer(0xb8000));
     });
     hal::halt();
 }
@@ -186,24 +193,32 @@ extern "x86-interrupt" fn double_fault_handler(stack_frame: idt::StackFrame, err
     hal::interrupts::without_interrupts(|| {
         log!(RING_BUFFER, "DOUBLE FAULT {error_code:?}");
         log!(RING_BUFFER, "{stack_frame:?}");
-        RING_BUFFER.lock().dump_with_reason("DOUBLE FAULT", make_writer(0xb8000));
+        RING_BUFFER
+            .lock()
+            .dump_with_reason("DOUBLE FAULT", make_writer(0xb8000));
     });
     loop {
         hal::halt();
     }
 }
 
-extern "x86-interrupt" fn timer_handler(_stack_frame: idt::StackFrame) {
-    // hal::interrupts::without_interrupts(|| TIMER_WRITER.get().unwrap().lock().write_string("."));
+fn timer_handler(_stack_frame: idt::StackFrame) {
     COUNTER.get().unwrap().lock().increment();
-    hal::interrupts::without_interrupts(|| {
-        TIMER_WRITER
-            .get()
-            .unwrap()
-            .lock()
-            .write_fmt(format_args!("{},", COUNTER.get().unwrap().lock().0))
-    });
+    TIMER_WRITER
+        .get()
+        .unwrap()
+        .lock()
+        .write_fmt(format_args!("{},", COUNTER.get().unwrap().lock().0));
     unsafe {
         PICS.get().unwrap().lock().notify_end_of_interrupt(32);
     };
+}
+
+fn shared_handler(irq_no: u64, stack_frame: idt::StackFrame) {
+    without_interrupts(|| {
+        match irq_no {
+            0 => timer_handler(stack_frame),
+            _ => unimplemented!(),
+        };
+    })
 }
