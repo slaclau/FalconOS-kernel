@@ -1,59 +1,69 @@
 ENTRY(start)
 
-SECTIONS {
-  . = 1M;
+KERNEL_START = 1M;
+KERNEL_OFFSET = 0xFFFF800000000000;
 
-  .rodata :
+SECTIONS {
+  . = KERNEL_START;
+
+  .bootstrap :
   {
     /* ensure that the multiboot header is at the beginning */
     KEEP(*(.multiboot_header))
+    *(.bootstrap)
+    . = ALIGN(4K);
+  }
+
+  . += KERNEL_OFFSET;
+  .rodata : AT(ADDR(.rodata) - KERNEL_OFFSET)
+  {
     *(.rodata .rodata.*)
     . = ALIGN(4K);
   }
 
-  .text :
+  .text : AT(ADDR(.text) - KERNEL_OFFSET)
   {
     *(.text .text.*)
     . = ALIGN(4K);
   }
 
-  .data :
+  .data : AT(ADDR(.data) - KERNEL_OFFSET)
   {
     *(.data .data.*)
     . = ALIGN(4K);
-    _ring_buffer_start = ABSOLUTE(.);
-    _ring_buffer_end = ABSOLUTE(. + 1024 * 128);
+    //_ring_buffer_start = ABSOLUTE(.);
+    //_ring_buffer_end = ABSOLUTE(. + 1024 * 128);
   }
 
-  .bss :
+  .bss : AT(ADDR(.bss) - KERNEL_OFFSET)
   {
     *(.bss .bss.*)
     . = ALIGN(4K);
   }
 
-  .got :
+  .got : AT(ADDR(.got) - KERNEL_OFFSET)
   {
     *(.got)
     . = ALIGN(4K);
   }
 
-  .got.plt :
+  .got.plt : AT(ADDR(.got.plt) - KERNEL_OFFSET)
   {
     *(.got.plt)
     . = ALIGN(4K);
   }
 
-  .data.rel.ro : ALIGN(4K) {
+  .data.rel.ro : AT(ADDR(.data.rel.ro) - KERNEL_OFFSET) {
     *(.data.rel.ro.local*) *(.data.rel.ro .data.rel.ro.*)
     . = ALIGN(4K);
   }
 
-  .gcc_except_table : ALIGN(4K) {
+  .gcc_except_table : AT(ADDR(.gcc_except_table) - KERNEL_OFFSET) {
     *(.gcc_except_table)
     . = ALIGN(4K);
   }
 
-  .eh_frame :
+  .eh_frame : AT(ADDR(.eh_frame) - KERNEL_OFFSET)
   {
     *(.eh_frame .eh_frame.*)
     . = ALIGN(4K);
