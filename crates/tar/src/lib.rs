@@ -1,6 +1,7 @@
 #![no_std]
+#![feature(ptr_metadata)]
 
-use core::iter::from_fn;
+use core::{iter::from_fn, ptr::{self, from_raw_parts}};
 
 pub struct Archive<'a>(pub &'a [u8]);
 
@@ -44,6 +45,11 @@ pub struct File<'a> {
 impl<'a> File<'a> {
     pub fn n_file_records(&self) -> usize {
         self.file_records.len()
+    }
+
+    pub fn bytes(&self) -> &[u8] {
+        let base_ptr = ptr::addr_of!(self.file_records);
+        unsafe{&*from_raw_parts(base_ptr, self.header_record.size())}
     }
 }
 
