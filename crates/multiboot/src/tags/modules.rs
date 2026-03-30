@@ -3,8 +3,8 @@ use core::fmt::Debug;
 use crate::{Tag, TagHeader, TagType};
 
 pub struct ModuleTag {
-    start: u32,
-    end: u32,
+    pub start: u32,
+    pub end: u32,
     string: [u8],
 }
 
