@@ -1,32 +1,38 @@
 #![no_std]
-#![feature(ptr_metadata)]
 
-use core::{iter::from_fn, ptr::{self, from_raw_parts}};
+use core::iter::from_fn;
 
 pub struct Archive<'a>(pub &'a [u8]);
 
 impl<'a> Archive<'a> {
     pub fn files(&self) -> impl Iterator<Item = File<'a>> {
-        let (records, remainder) = self.0.as_chunks::<512>();
+        const RECORD_SIZE: usize = 512;
+        let (_, remainder) = self.0.as_chunks::<RECORD_SIZE>();
         assert!(remainder.len() == 0);
         let mut pos = 0;
+
         from_fn(move || {
-            if pos < records.len() {
-                if records[pos..pos + 2]
+            if pos < self.0.len() {
+                if self.0[pos * RECORD_SIZE..(pos + 2) * RECORD_SIZE]
                     .iter()
-                    .all(|record| record.iter().all(|byte| *byte == 0))
+                    .all(|byte| *byte == 0)
                 {
                     return None;
                 }
-                let header_record = HeaderRecord::from_bytes(&records[pos]);
+                let header_record = HeaderRecord::from_bytes(
+                    &self.0[pos * RECORD_SIZE..(pos + 1) * RECORD_SIZE]
+                        .as_array()
+                        .expect("Not enough bytes for header"),
+                );
                 let file_size = header_record.size();
-                let n_file_records = file_size / 512 + 1;
+                let n_file_records = file_size / RECORD_SIZE + 1;
 
-                let file_records = &records[pos + 1..pos + 1 + n_file_records];
+                let bytes =
+                    &self.0[(pos + 1) * RECORD_SIZE..(pos + 1 + n_file_records) * RECORD_SIZE];
 
                 let file = File {
                     header_record,
-                    file_records,
+                    bytes,
                 };
                 pos += 1 + n_file_records;
                 Some(file)
@@ -39,18 +45,7 @@ impl<'a> Archive<'a> {
 
 pub struct File<'a> {
     pub header_record: &'a HeaderRecord,
-    file_records: &'a [[u8; 512]],
-}
-
-impl<'a> File<'a> {
-    pub fn n_file_records(&self) -> usize {
-        self.file_records.len()
-    }
-
-    pub fn bytes(&self) -> &[u8] {
-        let base_ptr = ptr::addr_of!(self.file_records);
-        unsafe{&*from_raw_parts(base_ptr, self.header_record.size())}
-    }
+    pub bytes: &'a [u8],
 }
 
 #[repr(C)]
