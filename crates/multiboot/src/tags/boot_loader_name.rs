@@ -19,6 +19,7 @@ impl BootLoaderNameTag {
     fn string(&self) -> &str {
         str::from_utf8(&self.string[0..self.string.len() - 1])
             .expect("Could not parse BootLoaderName")
+            .trim_matches(char::from(0))
     }
 }
 impl Debug for BootLoaderNameTag {

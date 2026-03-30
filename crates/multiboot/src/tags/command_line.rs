@@ -17,8 +17,10 @@ impl Tag for CommandLineTag {
 }
 
 impl CommandLineTag {
-    fn string(&self) -> &str {
-        str::from_utf8(&self.string[0..self.string.len() - 1]).expect("Could not parse CommandLine")
+    pub fn string(&self) -> &str {
+        str::from_utf8(&self.string[0..self.string.len() - 1])
+            .expect("Could not parse CommandLine")
+            .trim_matches(char::from(0))
     }
 }
 
