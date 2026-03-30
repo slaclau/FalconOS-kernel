@@ -67,7 +67,9 @@ impl HeaderRecord {
     }
 
     pub fn path(&self) -> &str {
-        str::from_utf8(&self.path).expect("Could not parse path")
+        str::from_utf8(&self.path)
+            .expect("Could not parse path")
+            .trim_matches(char::from(0))
     }
 
     pub fn size(&self) -> usize {
