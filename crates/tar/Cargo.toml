@@ -1,0 +1,16 @@
+[package]
+name = "tar"
+version = "0.0.1"
+authors = ["Sébastien Laclau <seb.laclau@gmail.com>"]
+edition = "2024"
+
+[lib]
+crate-type = ["rlib"]
+
+[[bin]]
+name = "main"
+required-features = ["test"]
+
+[features]
+default = []
+test = []
