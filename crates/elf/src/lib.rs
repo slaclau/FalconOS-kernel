@@ -238,14 +238,14 @@ impl<'a> ProgramHeader<'a> {
 #[derive(Debug)]
 #[repr(C)]
 pub struct ProgramHeaderEntry {
-    segment_type: SegmentType,
-    flags: u32,
-    offset: u64,
-    vaddr: u64,
-    paddr: u64,
-    file_size: u64,
-    mem_size: u64,
-    align: u64,
+    pub segment_type: SegmentType,
+    pub flags: u32,
+    pub offset: u64,
+    pub vaddr: u64,
+    pub paddr: u64,
+    pub file_size: u64,
+    pub mem_size: u64,
+    pub align: u64,
 }
 
 impl ProgramHeaderEntry {
@@ -392,7 +392,7 @@ impl From<u16> for FileType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 #[repr(u32)]
 pub enum SegmentType {
     Null = 0,
@@ -453,16 +453,16 @@ impl<'a> SectionHeader<'a> {
 #[derive(Debug)]
 #[repr(C)]
 pub struct SectionHeaderEntry {
-    name_offset: u32,
-    section_type: SectionType,
-    flags: u64,
-    addr: u64,
-    offset: u64,
-    size: u64,
-    link: u32,
-    info: u32,
-    align: u64,
-    entry_size: u64,
+    pub name_offset: u32,
+    pub section_type: SectionType,
+    pub flags: u64,
+    pub addr: u64,
+    pub offset: u64,
+    pub size: u64,
+    pub link: u32,
+    pub info: u32,
+    pub align: u64,
+    pub entry_size: u64,
 }
 
 impl SectionHeaderEntry {
@@ -542,7 +542,7 @@ impl SectionHeaderEntry {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 #[repr(u32)]
 pub enum SectionType {
     Null = 0,
