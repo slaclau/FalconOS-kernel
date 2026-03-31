@@ -8,7 +8,10 @@ edition = "2024"
 crate-type = ["staticlib"]
 
 [dependencies]
+elf = { path = "../elf" }
 hal = { path = "../hal" }
 macros = { path = "../macros" }
+multiboot = { path = "../multiboot" }
+tar = { path = "../tar" }
 lazy_static = { version = "1.5.0", features = ["spin", "spin_no_std"] }
 spin = "0.10.0"
