@@ -21,9 +21,9 @@ impl Tag for MemoryMapTag {
 
 #[repr(C)]
 pub struct MemoryMapTagEntry {
-    base_addr: u64,
-    length: u64,
-    memory_area_type: MemoryMapTagEntryTypeId,
+    pub base_addr: u64,
+    pub length: u64,
+    pub memory_area_type: MemoryMapTagEntryTypeId,
     _reserved: u32,
 }
 
@@ -41,7 +41,7 @@ impl Debug for MemoryMapTagEntry {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 #[repr(u32)]
 pub enum MemoryMapTagEntryType {
     Available = 1,
@@ -52,6 +52,7 @@ pub enum MemoryMapTagEntryType {
     Custom(u32),
 }
 
+#[derive(PartialEq, Eq)]
 pub struct MemoryMapTagEntryTypeId(u32);
 
 impl From<&MemoryMapTagEntryTypeId> for MemoryMapTagEntryType {
@@ -77,6 +78,22 @@ impl From<&MemoryMapTagEntryType> for MemoryMapTagEntryTypeId {
             MemoryMapTagEntryType::Defective => MemoryMapTagEntryTypeId(5),
             MemoryMapTagEntryType::Custom(val) => MemoryMapTagEntryTypeId(*val),
         }
+    }
+}
+
+impl PartialEq<MemoryMapTagEntryType> for MemoryMapTagEntryTypeId {
+    fn eq(&self, other: &MemoryMapTagEntryType) -> bool {
+        let val: Self = other.into();
+        let val: u32 = val.0;
+        self.0.eq(&val)
+    }
+}
+
+impl PartialEq<MemoryMapTagEntryTypeId> for MemoryMapTagEntryType {
+    fn eq(&self, other: &MemoryMapTagEntryTypeId) -> bool {
+        let val: MemoryMapTagEntryTypeId = self.into();
+        let val: u32 = val.0;
+        other.0.eq(&val)
     }
 }
 

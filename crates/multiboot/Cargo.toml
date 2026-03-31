@@ -6,3 +6,6 @@ edition = "2024"
 
 [lib]
 crate-type = ["rlib"]
+
+[dependencies]
+elf = { "path" = "../elf" }

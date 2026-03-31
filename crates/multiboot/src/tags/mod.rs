@@ -1,5 +1,5 @@
-use core::ptr::{self, Pointee, from_raw_parts};
 use core::fmt::Debug;
+use core::ptr::{self, from_raw_parts, Pointee};
 
 pub use crate::tags::header::TagHeader;
 
@@ -9,10 +9,13 @@ pub use boot_loader_name::BootLoaderNameTag;
 mod command_line;
 pub use command_line::CommandLineTag;
 
+mod elf_sections;
+pub use elf_sections::ElfSectionsTag;
+
 mod header;
 
 mod memory_map;
-pub use memory_map::MemoryMapTag;
+pub use memory_map::{MemoryMapTag, MemoryMapTagEntryType};
 
 mod modules;
 pub use modules::ModuleTag;
