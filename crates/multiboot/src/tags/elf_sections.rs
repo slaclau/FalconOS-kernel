@@ -5,10 +5,10 @@ use crate::{Tag, TagHeader, TagType};
 #[derive(Debug)]
 #[repr(C)]
 pub struct ElfSectionsTag {
-    header: TagHeader,
+    pub header: TagHeader,
     number: u32,
     entry_size: u32,
-    shndx: u32,
+    pub shndx: u32,
     entry_bytes: [u8],
 }
 
