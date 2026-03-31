@@ -21,7 +21,7 @@ impl Tag for ElfSectionsTag {
 }
 
 impl ElfSectionsTag {
-    pub fn entries(&self) -> impl Iterator<Item = elf::SectionHeaderEntry> {
+    pub fn entries(&self) -> impl Iterator<Item = elf::SectionHeader> {
         let mut count = 0;
 
         from_fn(move || {
@@ -32,7 +32,7 @@ impl ElfSectionsTag {
                     64 => elf::Architecture::Bits64,
                     val => panic!("This should not happen - size must be 40 or 64 not {val}"),
                 };
-                let ret = Some(elf::SectionHeaderEntry::from_bytes(
+                let ret = Some(elf::SectionHeader::from_bytes(
                     architecture,
                     endianness,
                     &self.entry_bytes[(count * self.entry_size) as usize

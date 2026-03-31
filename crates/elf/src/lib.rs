@@ -10,10 +10,10 @@ impl<'a> Elf<'a> {
         Header::from_bytes(&self.0).expect("Could not parse the ELF header")
     }
 
-    pub fn program_header(&self) -> ProgramHeader<'_> {
+    pub fn program_header(&self) -> ProgramHeaderTable<'_> {
         let header = self.header();
 
-        ProgramHeader {
+        ProgramHeaderTable {
             class: header.class,
             endianness: header.endianness,
             entry_size: header.ph_entry_size,
@@ -24,9 +24,9 @@ impl<'a> Elf<'a> {
         }
     }
 
-    pub fn section_header(&self) -> SectionHeader<'_> {
+    pub fn section_header(&self) -> SectionHeaderTable<'_> {
         let header = self.header();
-        SectionHeader {
+        SectionHeaderTable {
             class: header.class,
             endianness: header.endianness,
             entry_size: header.sh_entry_size,
@@ -207,7 +207,7 @@ impl Header {
 }
 
 #[repr(C)]
-pub struct ProgramHeader<'a> {
+pub struct ProgramHeaderTable<'a> {
     class: Architecture,
     endianness: Endianness,
     entry_size: u16,
@@ -215,12 +215,12 @@ pub struct ProgramHeader<'a> {
     bytes: &'a [u8],
 }
 
-impl<'a> ProgramHeader<'a> {
-    pub fn entries(&self) -> impl Iterator<Item = ProgramHeaderEntry> {
+impl<'a> ProgramHeaderTable<'a> {
+    pub fn entries(&self) -> impl Iterator<Item = ProgramHeader> {
         let mut count: usize = 0;
         from_fn(move || {
             if count < self.entry_num as usize {
-                let ret = Some(ProgramHeaderEntry::from_bytes(
+                let ret = Some(ProgramHeader::from_bytes(
                     self.class,
                     self.endianness,
                     &self.bytes
@@ -237,7 +237,7 @@ impl<'a> ProgramHeader<'a> {
 
 #[derive(Debug)]
 #[repr(C)]
-pub struct ProgramHeaderEntry {
+pub struct ProgramHeader {
     pub segment_type: SegmentType,
     pub flags: u32,
     pub offset: u64,
@@ -248,7 +248,7 @@ pub struct ProgramHeaderEntry {
     pub align: u64,
 }
 
-impl ProgramHeaderEntry {
+impl ProgramHeader {
     fn from_bytes<'a>(class: Architecture, endianness: Endianness, bytes: &'a [u8]) -> Self {
         let address_size = match class {
             Architecture::Bits32 => 4,
@@ -422,7 +422,7 @@ impl From<u32> for SegmentType {
     }
 }
 
-pub struct SectionHeader<'a> {
+pub struct SectionHeaderTable<'a> {
     class: Architecture,
     endianness: Endianness,
     entry_size: u16,
@@ -430,12 +430,12 @@ pub struct SectionHeader<'a> {
     bytes: &'a [u8],
 }
 
-impl<'a> SectionHeader<'a> {
-    pub fn entries(&self) -> impl Iterator<Item = SectionHeaderEntry> {
+impl<'a> SectionHeaderTable<'a> {
+    pub fn entries(&self) -> impl Iterator<Item = SectionHeader> {
         let mut count: usize = 0;
         from_fn(move || {
             if count < self.entry_num as usize {
-                let ret = Some(SectionHeaderEntry::from_bytes(
+                let ret = Some(SectionHeader::from_bytes(
                     self.class,
                     self.endianness,
                     &self.bytes
@@ -452,7 +452,7 @@ impl<'a> SectionHeader<'a> {
 
 #[derive(Debug)]
 #[repr(C)]
-pub struct SectionHeaderEntry {
+pub struct SectionHeader {
     pub name_offset: u32,
     pub section_type: SectionType,
     pub flags: u64,
@@ -465,7 +465,7 @@ pub struct SectionHeaderEntry {
     pub entry_size: u64,
 }
 
-impl SectionHeaderEntry {
+impl SectionHeader {
     pub fn from_bytes<'a>(class: Architecture, endianness: Endianness, bytes: &'a [u8]) -> Self {
         let address_size = match class {
             Architecture::Bits32 => 4,
