@@ -2,7 +2,7 @@ global long_mode_start
 
 %define KERNEL_OFFSET 0xFFFF800000000000
 
-section .bootstrap
+section .loader
 bits 64
 long_mode_start:
     ; load 0 into all data segment registers

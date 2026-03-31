@@ -5,12 +5,11 @@ KERNEL_OFFSET = 0xFFFF800000000000;
 
 SECTIONS {
   . = KERNEL_START;
-
-  .bootstrap :
+  .loader :
   {
     /* ensure that the multiboot header is at the beginning */
     KEEP(*(.multiboot_header))
-    *(.bootstrap)
+    *(.loader)
     . = ALIGN(4K);
   }
 
