@@ -1,6 +1,6 @@
 #![no_std]
 
-use core::{iter::from_fn, sync::atomic::AtomicUsize};
+use core::{fmt::Debug, iter::from_fn, sync::atomic::AtomicUsize};
 
 #[repr(C)]
 pub struct Elf<'a>(pub &'a [u8]);
@@ -455,7 +455,7 @@ impl<'a> SectionHeaderTable<'a> {
 pub struct SectionHeader {
     pub name_offset: u32,
     pub section_type: SectionType,
-    pub flags: u64,
+    pub flags: SectionFlags,
     pub addr: u64,
     pub offset: u64,
     pub size: u64,
@@ -530,7 +530,7 @@ impl SectionHeader {
         Self {
             name_offset: get_u32(),
             section_type: get_u32().into(),
-            flags: get_u64(),
+            flags: SectionFlags(get_u64()),
             addr: get_u64(),
             offset: get_u64(),
             size: get_u64(),
@@ -589,5 +589,54 @@ impl From<u32> for SectionType {
             19 => SectionType::NumberDefinedTypes,
             val => SectionType::OtherReserved(val),
         }
+    }
+}
+
+#[repr(C)]
+pub struct SectionFlags(u64);
+
+impl SectionFlags {
+    fn writable(&self) -> bool {
+        self.0 & 1 > 0
+    }
+    fn alloc(&self) -> bool {
+        self.0 & 1 << 1 > 0
+    }
+    fn executable(&self) -> bool {
+        self.0 & 1 << 2 > 0
+    }
+    fn merge(&self) -> bool {
+        self.0 & 1 << 4 > 0
+    }
+    fn string(&self) -> bool {
+        self.0 & 1 << 5 > 0
+    }
+    fn info_link(&self) -> bool {
+        self.0 & 1 << 6 > 0
+    }
+    fn link_order(&self) -> bool {
+        self.0 & 1 << 7 > 0
+    }
+    fn group(&self) -> bool {
+        self.0 & 1 << 9 > 0
+    }
+    fn tls(&self) -> bool {
+        self.0 & 1 << 10 > 0
+    }
+}
+
+impl Debug for SectionFlags {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("SectionFlags")
+            .field("W", &self.writable())
+            .field("A", &self.alloc())
+            .field("X", &self.executable())
+            .field("M", &self.merge())
+            .field("S", &self.string())
+            .field("I", &self.info_link())
+            .field("L", &self.link_order())
+            .field("G", &self.group())
+            .field("T", &self.tls())
+            .finish()
     }
 }
