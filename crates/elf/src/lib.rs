@@ -450,7 +450,7 @@ impl<'a> SectionHeaderTable<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub struct SectionHeader {
     pub name_offset: u32,
@@ -542,7 +542,7 @@ impl SectionHeader {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 #[repr(u32)]
 pub enum SectionType {
     Null = 0,
@@ -592,35 +592,36 @@ impl From<u32> for SectionType {
     }
 }
 
+#[derive(Clone, Copy)]
 #[repr(C)]
 pub struct SectionFlags(u64);
 
 impl SectionFlags {
-    fn writable(&self) -> bool {
+    pub fn writable(&self) -> bool {
         self.0 & 1 > 0
     }
-    fn alloc(&self) -> bool {
+    pub fn alloc(&self) -> bool {
         self.0 & 1 << 1 > 0
     }
-    fn executable(&self) -> bool {
+    pub fn executable(&self) -> bool {
         self.0 & 1 << 2 > 0
     }
-    fn merge(&self) -> bool {
+    pub fn merge(&self) -> bool {
         self.0 & 1 << 4 > 0
     }
-    fn string(&self) -> bool {
+    pub fn string(&self) -> bool {
         self.0 & 1 << 5 > 0
     }
-    fn info_link(&self) -> bool {
+    pub fn info_link(&self) -> bool {
         self.0 & 1 << 6 > 0
     }
-    fn link_order(&self) -> bool {
+    pub fn link_order(&self) -> bool {
         self.0 & 1 << 7 > 0
     }
-    fn group(&self) -> bool {
+    pub fn group(&self) -> bool {
         self.0 & 1 << 9 > 0
     }
-    fn tls(&self) -> bool {
+    pub fn tls(&self) -> bool {
         self.0 & 1 << 10 > 0
     }
 }
@@ -638,5 +639,28 @@ impl Debug for SectionFlags {
             .field("G", &self.group())
             .field("T", &self.tls())
             .finish()
+    }
+}
+
+pub struct StringTable<'a> {
+    pub header: SectionHeader,
+    pub bytes: &'a [u8],
+}
+
+impl<'a> StringTable<'a> {
+    pub fn get_name(&self, offset: usize) -> Option<&str> {
+        let str_len = {
+            let mut len = 0;
+            while self.bytes[offset + len] != 0 {
+                len += 1;
+            }
+            len
+        };
+        let name = str::from_utf8(&self.bytes[offset..offset + str_len]);
+        if name.is_ok() {
+            Some(name.unwrap())
+        } else {
+            None
+        }
     }
 }
