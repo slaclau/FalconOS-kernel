@@ -17,7 +17,7 @@ impl<'a> RingBufferEntryWrapper<'a> {
     }
 
     pub fn as_str(&self) -> &str {
-        str::from_utf8(self.entry).expect("")
+        str::from_utf8(self.entry).expect("should be a string")
     }
 }
 
@@ -89,7 +89,7 @@ impl<const LENGTH: usize> RingBuffer<LENGTH> {
         for (index, byte) in msg.bytes().enumerate() {
             entry[index] = byte;
         }
-        let index = self.length % self.size;
+        let index = (self.start + self.length) % self.size;
         self.entries[index] = entry;
         self.length += 1;
         Ok(())
