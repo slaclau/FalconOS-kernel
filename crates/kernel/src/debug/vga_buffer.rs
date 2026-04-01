@@ -116,6 +116,7 @@ impl Writer {
         }
     }
 
+    #[allow(unused)]
     pub fn clear(&mut self) {
         for i in 0..BUFFER_HEIGHT {
             self.clear_row(i);

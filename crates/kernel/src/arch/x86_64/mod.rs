@@ -1,12 +1,8 @@
 use core::fmt::Write;
 
-use spin::{Mutex, MutexGuard, Once};
+use spin::{Mutex, Once};
 
-use crate::{
-    RING_BUFFER,
-    debug::{Writer, make_writer},
-    log,
-};
+use crate::{RING_BUFFER, log};
 
 mod interrupts;
 mod memory;
@@ -21,14 +17,6 @@ pub use qemu::QemuDebugWriter;
 
 pub static DEBUG_WRITER: Once<Mutex<QemuDebugWriter>> = Once::new();
 
-pub struct WriterWrapper<'a>(pub MutexGuard<'a, Writer>);
-
-impl Write for WriterWrapper<'_> {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        self.0.write_str(s)
-    }
-}
-
 unsafe extern "C" {
     // static _ring_buffer_start: usize;
     // static _ring_buffer_end: usize;
@@ -37,15 +25,7 @@ unsafe extern "C" {
 #[cfg_attr(not(test), panic_handler)]
 #[allow(unused)]
 fn panic(info: &core::panic::PanicInfo) -> ! {
-    DEBUG_WRITER
-        .get()
-        .unwrap()
-        .lock()
-        .write_fmt(format_args!("PANIC: {:?}", info));
-    log!(RING_BUFFER, "{:?}", info);
-    RING_BUFFER
-        .lock()
-        .dump_with_reason("PANIC", make_writer(0xb8000));
+    log!(RING_BUFFER, "PANIC: {:?}", info);
     loop {
         hal::halt();
     }

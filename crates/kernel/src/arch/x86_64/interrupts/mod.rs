@@ -14,7 +14,6 @@ use crate::{
             idt::{self, PageFaultErrorCode},
         },
     },
-    debug::make_writer,
     log,
 };
 
@@ -162,9 +161,6 @@ extern "x86-interrupt" fn page_fault_handler(stack_frame: idt::StackFrame, error
     hal::interrupts::without_interrupts(|| {
         log!(RING_BUFFER, "PAGE FAULT {error_code:?}");
         log!(RING_BUFFER, "{stack_frame:?}");
-        RING_BUFFER
-            .lock()
-            .dump_with_reason("PAGE FAULT", make_writer(0xb8000));
     });
     hal::halt();
 }
@@ -173,9 +169,6 @@ extern "x86-interrupt" fn gp_fault_handler(stack_frame: idt::StackFrame, error_c
     hal::interrupts::without_interrupts(|| {
         log!(RING_BUFFER, "GENERAL PROTECTION FAULT {error_code:?}");
         log!(RING_BUFFER, "{stack_frame:?}");
-        RING_BUFFER
-            .lock()
-            .dump_with_reason("GENERAL PROTECTION FAULT", make_writer(0xb8000));
     });
     hal::halt();
 }
@@ -184,9 +177,6 @@ extern "x86-interrupt" fn double_fault_handler(stack_frame: idt::StackFrame, err
     hal::interrupts::without_interrupts(|| {
         log!(RING_BUFFER, "DOUBLE FAULT {error_code:?}");
         log!(RING_BUFFER, "{stack_frame:?}");
-        RING_BUFFER
-            .lock()
-            .dump_with_reason("DOUBLE FAULT", make_writer(0xb8000));
     });
     loop {
         hal::halt();
