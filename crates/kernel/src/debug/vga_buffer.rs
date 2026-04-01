@@ -115,6 +115,12 @@ impl Writer {
             }
         }
     }
+
+    pub fn clear(&mut self) {
+        for i in 0..BUFFER_HEIGHT {
+            self.clear_row(i);
+        }
+    }
 }
 
 impl fmt::Write for Writer {
