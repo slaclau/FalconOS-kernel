@@ -1,5 +1,5 @@
 use core::fmt::Debug;
-use core::ptr::{self, from_raw_parts, Pointee};
+use core::ptr::{self, Pointee, from_raw_parts};
 
 pub use crate::tags::header::TagHeader;
 
