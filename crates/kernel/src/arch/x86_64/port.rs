@@ -96,7 +96,7 @@ impl<T> Port<T> {
             can_read,
             can_write,
             number,
-            phantom: PhantomData, 
+            phantom: PhantomData,
         }
     }
 

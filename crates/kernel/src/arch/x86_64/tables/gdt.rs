@@ -7,7 +7,8 @@ use crate::{
         segmentation::tss::TaskStateSegment,
         tables::{PrivilegeLevel, TablePointer},
     },
-    log, utils::bits::{get_bit, get_bits},
+    log,
+    utils::bits::{get_bit, get_bits},
 };
 
 pub struct Table<const MAX: usize> {

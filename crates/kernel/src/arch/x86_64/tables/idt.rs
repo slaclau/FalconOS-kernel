@@ -11,7 +11,6 @@ const DOUBLE_FAULT_INDEX: usize = 0x8;
 const GP_FAULT_INDEX: usize = 0xd;
 const PAGE_FAULT_INDEX: usize = 0xe;
 
-
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct Table {
@@ -107,7 +106,7 @@ impl EntryOptions {
     }
 
     pub fn get_stack_index(self) -> u8 {
-        (((self.0 << 13) >> 13) -1) as u8
+        (((self.0 << 13) >> 13) - 1) as u8
     }
 
     pub fn set_stack_index(&mut self, stack_index: u8) -> &mut Self {
