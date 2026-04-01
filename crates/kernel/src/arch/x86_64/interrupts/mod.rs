@@ -48,10 +48,6 @@ pub fn configure() {
     create_and_load_idt();
 
     enable_timer();
-
-    RING_BUFFER
-        .lock()
-        .dump_with_reason("After loading", make_writer(0xb8000));
 }
 
 fn create_and_load_gdt() {
@@ -102,7 +98,7 @@ fn create_and_load_gdt() {
 
         load_tss(GDT.get().unwrap().4);
     }
-    log!(RING_BUFFER, "Loaded TSS");
+    log!(RING_BUFFER, "loaded TSS");
 }
 
 fn create_and_load_idt() {
