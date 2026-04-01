@@ -67,4 +67,5 @@ SECTIONS {
     *(.eh_frame .eh_frame.*)
     . = ALIGN(4K);
   }
+  _kernel_end = .;
 }

@@ -5,12 +5,15 @@
 
 use core::{fmt::Write, ptr::from_raw_parts, slice};
 
+extern crate alloc;
+
 use elf::SectionHeader;
 use multiboot::{ElfSectionsTag, MemoryMapTagEntryType, ModuleTag};
 use spin::{Mutex, Once};
 
 use crate::utils::ring_buffer::{RING_BUFFER_LENGTH, RingBuffer};
 
+mod allocator;
 mod arch;
 mod bootstrap;
 mod context;
@@ -30,11 +33,17 @@ pub static BOOTSTRAP_INFO: Mutex<bootstrap::Info> = Mutex::new(bootstrap::Info {
     kernel_memory_region: None,
 });
 
+pub const HEAP: [u8; 4096] = [0; 4096];
+
 #[cfg(debug_assertions)]
 mod debug;
 
 pub fn kernel_main() -> ! {
     log!(RING_BUFFER, "kernel_main called");
+
+    let heap_start = &HEAP as *const _ as usize;
+    allocator::init(heap_start, heap_start + 4096);
+    log!(RING_BUFFER, "global allocator init called");
 
     CONTEXT_SWITCHER.call_once(|| Mutex::new(context::Switcher::new()));
 
