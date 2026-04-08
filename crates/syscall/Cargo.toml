@@ -1,0 +1,5 @@
+[package]
+name = "syscall"
+version = "0.0.1"
+authors = ["Sébastien Laclau <seb.laclau@gmail.com>"]
+edition = "2024"

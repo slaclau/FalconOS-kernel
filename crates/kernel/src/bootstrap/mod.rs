@@ -1,6 +1,6 @@
 use core::fmt::{Debug, Write};
 
-use crate::PhysicalAddress;
+use crate::{PhysicalAddress, process::Process};
 use elf::Elf;
 use tar::Archive;
 
@@ -39,8 +39,7 @@ pub fn run() {
         .trim_matches(char::from(0));
 
     let initial_file = archive.files().find(|f| {
-        &f.header_record.path()[1..] == command_line
-            && f.header_record.path().chars().nth(0).unwrap() == '.'
+        &f.header_record.path()[1..] == command_line && f.header_record.path().starts_with(".")
     });
 
     if initial_file.is_none() {
@@ -74,5 +73,49 @@ pub fn run() {
         initial_file.header_record.path()
     );
 
-    let elf = Elf(bytes);
+    let _elf = Elf(bytes);
+
+    let dummy_task = Process::new(dummy_task);
+    log!(RING_BUFFER, "{dummy_task:#x?}");
+    dummy_task.register();
+
+    let bs_task = Process::new(bs_task);
+    log!(RING_BUFFER, "{bs_task:#x?}");
+    let bs_task_id = bs_task.register();
+
+    let bs_task2 = Process::new(bs_task2);
+    log!(RING_BUFFER, "{bs_task2:#x?}");
+    bs_task2.register();
+
+    syscall::switch(bs_task_id);
+}
+
+extern "C" fn dummy_task() {}
+
+extern "C" fn bs_task() {
+    let pid = syscall::get_pid();
+    log!(RING_BUFFER, "bs 1 started with pid {pid}");
+    let mut i = 0;
+    loop {
+        i += 1;
+        if i % 10000000 == 0 {
+            log!(RING_BUFFER, "bs 1 yielding");
+            let prev = syscall::switch(2);
+            log!(RING_BUFFER, "bs 1 got control back from {prev}");
+        }
+    }
+}
+
+extern "C" fn bs_task2() {
+    let pid = syscall::get_pid();
+    log!(RING_BUFFER, "bs 2 started with pid {pid}");
+    let mut i = 0;
+    loop {
+        i += 1;
+        if i % 10000000 == 0 {
+            log!(RING_BUFFER, "bs 2 yielding");
+            let prev = syscall::switch(1);
+            log!(RING_BUFFER, "bs 2 got control back from {prev}");
+        }
+    }
 }

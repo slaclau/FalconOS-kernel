@@ -10,14 +10,14 @@ fn make_handler(irq_no: u64) -> String {
 
 #[proc_macro]
 pub fn make_handlers(_item: TokenStream) -> TokenStream {
-    let funcs: Vec<String> = (0..256 - 32).map(make_handler).collect();
+    let funcs: Vec<String> = (32..256).map(make_handler).collect();
 
     funcs.join("").parse().unwrap()
 }
 
 fn make_assignment(irq_no: u64) -> String {
     let assignment = format!(
-        "idt.interrupts()[{irq_no}].set_handler_addr(irq_handler_{irq_no} as *const () as u64).options.set_present(true);"
+        "idt.interrupts()[{irq_no} - 32].set_handler_addr(irq_handler_{irq_no} as *const () as u64).options.set_present(true);"
     );
 
     assignment
@@ -25,7 +25,7 @@ fn make_assignment(irq_no: u64) -> String {
 
 #[proc_macro]
 pub fn assign_handlers(_item: TokenStream) -> TokenStream {
-    let assignments: Vec<String> = (0..256 - 32).map(make_assignment).collect();
+    let assignments: Vec<String> = (32..256).map(make_assignment).collect();
 
     assignments.join("").parse().unwrap()
 }

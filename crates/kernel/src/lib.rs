@@ -2,9 +2,8 @@
 #![feature(abi_x86_interrupt)]
 #![feature(debug_closure_helpers)]
 #![feature(ptr_metadata)]
-#![feature(coroutines)]
-#![feature(coroutine_trait)]
-#![feature(stmt_expr_attributes)]
+
+#![allow(static_mut_refs)]
 
 use core::{fmt::Write, ptr::from_raw_parts, slice};
 
@@ -12,7 +11,7 @@ extern crate alloc;
 
 use elf::SectionHeader;
 use multiboot::{ElfSectionsTag, MemoryMapTagEntryType, ModuleTag};
-use spin::{Mutex};
+use spin::Mutex;
 
 use crate::utils::ring_buffer::{RING_BUFFER_LENGTH, RingBuffer};
 
@@ -20,6 +19,7 @@ mod allocator;
 mod arch;
 mod bootstrap;
 mod process;
+mod syscall;
 mod utils;
 
 pub use arch::*;
@@ -34,7 +34,8 @@ pub static BOOTSTRAP_INFO: Mutex<bootstrap::Info> = Mutex::new(bootstrap::Info {
     kernel_memory_region: None,
 });
 
-pub const HEAP: [u8; 4096] = [0; 4096];
+pub const HEAP_SIZE: usize = 4096 * 32;
+pub static HEAP: [u8; HEAP_SIZE] = [0; HEAP_SIZE];
 
 #[cfg(debug_assertions)]
 mod debug;
@@ -43,7 +44,7 @@ pub fn kernel_main() -> ! {
     log!(RING_BUFFER, "kernel_main called");
 
     let heap_start = &HEAP as *const _ as usize;
-    allocator::init(heap_start, heap_start + 4096);
+    allocator::init(heap_start, heap_start + HEAP_SIZE);
     log!(RING_BUFFER, "global allocator init called");
 
     bootstrap::run();

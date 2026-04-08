@@ -1,4 +1,4 @@
-use core::{alloc::GlobalAlloc, ptr};
+use core::{alloc::GlobalAlloc, fmt::Debug, ptr};
 
 use spin::{Mutex, MutexGuard};
 
@@ -26,6 +26,7 @@ impl<T> Locked<T> {
     }
 }
 
+#[derive(Debug)]
 pub struct BumpAllocator {
     heap_start: usize,
     heap_end: usize,
