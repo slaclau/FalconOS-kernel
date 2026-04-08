@@ -7,7 +7,7 @@ pub struct Elf<'a>(pub &'a [u8]);
 
 impl<'a> Elf<'a> {
     pub fn header(&self) -> Header {
-        Header::from_bytes(&self.0).expect("Could not parse the ELF header")
+        Header::from_bytes(self.0).expect("Could not parse the ELF header")
     }
 
     pub fn program_header(&self) -> ProgramHeaderTable<'_> {
@@ -227,9 +227,9 @@ impl<'a> ProgramHeaderTable<'a> {
                         [count * self.entry_size as usize..(count + 1) * self.entry_size as usize],
                 ));
                 count += 1;
-                return ret;
+                ret
             } else {
-                return None;
+                None
             }
         })
     }
@@ -249,7 +249,7 @@ pub struct ProgramHeader {
 }
 
 impl ProgramHeader {
-    fn from_bytes<'a>(class: Architecture, endianness: Endianness, bytes: &'a [u8]) -> Self {
+    fn from_bytes(class: Architecture, endianness: Endianness, bytes: &[u8]) -> Self {
         let address_size = match class {
             Architecture::Bits32 => 4,
             Architecture::Bits64 => 8,
@@ -442,9 +442,9 @@ impl<'a> SectionHeaderTable<'a> {
                         [count * self.entry_size as usize..(count + 1) * self.entry_size as usize],
                 ));
                 count += 1;
-                return ret;
+                ret
             } else {
-                return None;
+                None
             }
         })
     }
@@ -466,7 +466,7 @@ pub struct SectionHeader {
 }
 
 impl SectionHeader {
-    pub fn from_bytes<'a>(class: Architecture, endianness: Endianness, bytes: &'a [u8]) -> Self {
+    pub fn from_bytes(class: Architecture, endianness: Endianness, bytes: &[u8]) -> Self {
         let address_size = match class {
             Architecture::Bits32 => 4,
             Architecture::Bits64 => 8,
@@ -658,7 +658,7 @@ impl<'a> StringTable<'a> {
         };
         let name = str::from_utf8(&self.bytes[offset..offset + str_len]);
         if name.is_ok() {
-            Some(name.unwrap())
+            Some(name.ok()?)
         } else {
             None
         }

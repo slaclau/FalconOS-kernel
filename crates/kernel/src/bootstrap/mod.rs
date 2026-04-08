@@ -15,7 +15,12 @@ pub struct Info<'a> {
 impl<'a> Debug for Info<'a> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Info")
-            .field("command_line", &self.command_line)
+            .field_with("command_line", |f| {
+                f.write_fmt(format_args!(
+                    "{}",
+                    str::from_utf8(&self.command_line).unwrap()
+                ))
+            })
             .finish()
     }
 }
@@ -70,8 +75,4 @@ pub fn run() {
     );
 
     let elf = Elf(bytes);
-
-    for entry in elf.program_header().entries() {
-        log!(RING_BUFFER, "{entry:#x?}");
-    }
 }

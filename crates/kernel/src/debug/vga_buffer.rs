@@ -95,7 +95,7 @@ impl Writer {
         for row in 1..BUFFER_HEIGHT {
             for col in 0..BUFFER_WIDTH {
                 unsafe {
-                    let character = ptr::read_volatile(&mut self.buffer.chars[row][col]);
+                    let character = ptr::read_volatile(&self.buffer.chars[row][col]);
                     ptr::write_volatile(&mut self.buffer.chars[row - 1][col], character);
                 }
             }

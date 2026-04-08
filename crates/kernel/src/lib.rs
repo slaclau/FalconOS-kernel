@@ -2,6 +2,9 @@
 #![feature(abi_x86_interrupt)]
 #![feature(debug_closure_helpers)]
 #![feature(ptr_metadata)]
+#![feature(coroutines)]
+#![feature(coroutine_trait)]
+#![feature(stmt_expr_attributes)]
 
 use core::{fmt::Write, ptr::from_raw_parts, slice};
 
@@ -9,13 +12,14 @@ extern crate alloc;
 
 use elf::SectionHeader;
 use multiboot::{ElfSectionsTag, MemoryMapTagEntryType, ModuleTag};
-use spin::{Mutex, Once};
+use spin::{Mutex};
 
 use crate::utils::ring_buffer::{RING_BUFFER_LENGTH, RingBuffer};
 
 mod allocator;
 mod arch;
 mod bootstrap;
+mod process;
 mod utils;
 
 pub use arch::*;

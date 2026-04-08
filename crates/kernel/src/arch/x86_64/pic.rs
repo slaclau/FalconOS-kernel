@@ -164,12 +164,11 @@ impl Pic {
 
     unsafe fn set_masked(&mut self, port: u8, masked: bool) {
         let old_mask = unsafe { self.read_mask() & (1 << port) };
-        let new_mask;
-        if masked {
-            new_mask = old_mask | (1 << port);
+        let new_mask = if masked {
+            old_mask | (1 << port)
         } else {
-            new_mask = old_mask & !(1 << port);
-        }
+            old_mask & !(1 << port)
+        };
         unsafe {
             self.write_mask(new_mask);
         }

@@ -8,7 +8,7 @@ impl<'a> Archive<'a> {
     pub fn files(&self) -> impl Iterator<Item = File<'a>> {
         const RECORD_SIZE: usize = 512;
         let (_, remainder) = self.0.as_chunks::<RECORD_SIZE>();
-        assert!(remainder.len() == 0);
+        assert!(remainder.is_empty());
         let mut pos = 0;
 
         from_fn(move || {
@@ -20,7 +20,7 @@ impl<'a> Archive<'a> {
                     return None;
                 }
                 let header_record = HeaderRecord::from_bytes(
-                    &self.0[pos * RECORD_SIZE..(pos + 1) * RECORD_SIZE]
+                    self.0[pos * RECORD_SIZE..(pos + 1) * RECORD_SIZE]
                         .as_array()
                         .expect("Not enough bytes for header"),
                 );

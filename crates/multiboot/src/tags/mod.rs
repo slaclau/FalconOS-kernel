@@ -59,14 +59,12 @@ pub struct TagContainer {
     pub(crate) payload: [u8],
 }
 
-impl<'a> TagContainer {
+impl TagContainer {
     pub fn from_bytes(bytes: &[u8]) -> &Self {
         unsafe { &*(bytes as *const _ as *const Self) }
     }
 
-    pub fn cast<T: Tag + ?Sized>(&self) -> &T
-    where
-        T: Pointee<Metadata = usize>,
+    pub fn cast<T: Tag + ?Sized + Pointee<Metadata = usize>>(&self) -> &T
     {
         assert!(self.header.tag_type == T::TYPE);
 
@@ -75,8 +73,8 @@ impl<'a> TagContainer {
         let dst_len = T::dst_len(&self.header);
 
         let ts_ptr = from_raw_parts(base_ptr, dst_len);
-        let ts_ref = unsafe { &*ts_ptr };
-        ts_ref
+        
+        (unsafe { &*ts_ptr }) as _
     }
 }
 impl Debug for TagContainer {

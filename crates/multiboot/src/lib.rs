@@ -2,7 +2,7 @@
 #![feature(ptr_metadata)]
 #![feature(debug_closure_helpers)]
 
-use core::{fmt::Debug, iter, ptr::Pointee, slice, usize};
+use core::{fmt::Debug, iter, ptr::Pointee, slice};
 
 mod tags;
 pub use tags::*;
@@ -48,7 +48,7 @@ impl<'a> BootInformation<'a> {
                         .expect("could not create container"),
                 );
                 let bytes = header.size as usize;
-                let rounded_bytes = ((bytes + 7) / 8) * 8;
+                let rounded_bytes = bytes.div_ceil(8) * 8;
                 i += rounded_bytes;
                 Some(tag)
             } else {

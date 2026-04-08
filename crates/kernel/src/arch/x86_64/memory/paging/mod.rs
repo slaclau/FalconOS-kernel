@@ -36,7 +36,7 @@ impl VirtualAddress {
     #[inline]
     pub const fn page_table_index(self, level: usize) -> usize {
         assert!(level < 5 && level > 0);
-        (self.0 >> 12 >> ((level as u8 - 1) * 9)) % ENTRY_COUNT as usize
+        (self.0 >> 12 >> ((level as u8 - 1) * 9)) % ENTRY_COUNT
     }
 
     #[cfg(target_pointer_width = "64")]
@@ -202,11 +202,11 @@ impl<'a> RecursiveMapper<'a> {
     }
 
     pub fn get_p4(&self) -> &Table<Level4> {
-        &self.p4
+        self.p4
     }
 
     pub fn get_p4_mut(&mut self) -> &Table<Level4> {
-        &self.p4
+        self.p4
     }
 }
 

@@ -100,7 +100,7 @@ impl<const LENGTH: usize> RingBuffer<LENGTH> {
     }
 
     pub fn dump_with_reason(&mut self, reason: &str, mut writer: impl Write) {
-        if reason.len() > 0 {
+        if !reason.is_empty() {
             writer
                 .write_fmt(format_args!("Dumping ring buffer ({reason}): {self:?}\n"))
                 .expect("Failed to write to writer");
@@ -109,7 +109,7 @@ impl<const LENGTH: usize> RingBuffer<LENGTH> {
                 .write_fmt(format_args!("Dumping ring buffer: {self:?}\n"))
                 .expect("Failed to write to writer");
         }
-        let mut buffer = [0 as u8; RING_BUFFER_ENTRY_SIZE];
+        let mut buffer = [0_u8; RING_BUFFER_ENTRY_SIZE];
 
         let mut i = 0;
 

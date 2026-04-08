@@ -31,7 +31,7 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
     }
 }
 
-#[cfg(all(target_arch = "x86_64"))]
+#[cfg(target_arch = "x86_64")]
 #[unsafe(no_mangle)]
 pub extern "C" fn kernel_start(mb_ptr: u32, mb_magic: u32) -> ! {
     use crate::{RING_BUFFER, kernel_main, kernel_shared_init, log};

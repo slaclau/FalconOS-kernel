@@ -265,9 +265,9 @@ impl AccessByte {
             panic!("Not implemented for Code/Data Descriptors")
         };
         match get_bits(self.0 as u64, 0, 4) {
-            0x2 => SystemSegmentType::LDT,
-            0x9 => SystemSegmentType::AvailableTSS,
-            0xB => SystemSegmentType::BusyTSS,
+            0x2 => SystemSegmentType::Ldt,
+            0x9 => SystemSegmentType::AvailableTss,
+            0xB => SystemSegmentType::BusyTss,
             v => panic!("{v:#x} is not a valid type"),
         }
     }
@@ -289,9 +289,9 @@ impl Debug for AccessByte {
 
 #[derive(Debug)]
 enum SystemSegmentType {
-    LDT,
-    AvailableTSS,
-    BusyTSS,
+    Ldt,
+    AvailableTss,
+    BusyTss,
 }
 pub struct DescriptorFlags(u8);
 
@@ -334,7 +334,7 @@ impl Debug for SegmentSelector {
             .field_with("bits", |f| f.write_fmt(format_args!("{:#018b}", self.0)))
             .field("rpl", &self.get_rpl())
             .field("ti", &self.get_ti())
-            .field("index", &mut self.get_index())
+            .field("index", &self.get_index())
             .finish()
     }
 }
