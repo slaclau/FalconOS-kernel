@@ -1,8 +1,6 @@
-use core::{alloc::GlobalAlloc, fmt::Write, ptr};
+use core::{alloc::GlobalAlloc, ptr};
 
 use spin::{Mutex, MutexGuard};
-
-use crate::{RING_BUFFER, log};
 
 #[global_allocator]
 pub static ALLOCATOR: Locked<BumpAllocator> = Locked::new(BumpAllocator::new());
