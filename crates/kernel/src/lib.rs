@@ -16,15 +16,12 @@ use crate::utils::ring_buffer::{RING_BUFFER_LENGTH, RingBuffer};
 mod allocator;
 mod arch;
 mod bootstrap;
-mod context;
 mod utils;
 
 pub use arch::*;
 
 pub static RING_BUFFER: Mutex<RingBuffer<RING_BUFFER_LENGTH>> =
     Mutex::new(RingBuffer::<RING_BUFFER_LENGTH>::new());
-
-pub static CONTEXT_SWITCHER: Once<Mutex<context::Switcher>> = Once::new();
 
 pub static BOOTSTRAP_INFO: Mutex<bootstrap::Info> = Mutex::new(bootstrap::Info {
     tarfs: None,
@@ -44,8 +41,6 @@ pub fn kernel_main() -> ! {
     let heap_start = &HEAP as *const _ as usize;
     allocator::init(heap_start, heap_start + 4096);
     log!(RING_BUFFER, "global allocator init called");
-
-    CONTEXT_SWITCHER.call_once(|| Mutex::new(context::Switcher::new()));
 
     bootstrap::run();
 
