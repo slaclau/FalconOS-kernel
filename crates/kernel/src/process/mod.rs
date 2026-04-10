@@ -12,7 +12,7 @@ pub static CURRENT_PROCESS_ID: AtomicUsize = AtomicUsize::new(0);
 pub static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
 
 pub fn init_multiprocessing() {
-    extern "C" fn kernel_task(_arg: usize) {}
+    extern "C" fn kernel_task(_arg: usize) -> usize {0}
     let k = syscall::spawn(kernel_task, 0);
     assert_eq!(k, KERNEL_TASK_ID);
     log!(RING_BUFFER, "multiprocessing initialized, kernel task running as {k}");
@@ -23,6 +23,7 @@ pub struct Process {
     id: ProcessId,
     context: Context,
     stack: Vec<u8>,
+    pub exit_code: Option<usize>
 }
 
 impl Debug for Process {
@@ -32,6 +33,17 @@ impl Debug for Process {
             .field("context", &self.context)
             .finish()
     }
+}
+
+#[unsafe(no_mangle)]
+extern "C" fn process_entry_trampoline(entry: usize, arg: usize) -> ! {
+    let func: fn(usize) -> usize = unsafe{ core::mem::transmute(entry)};
+
+    let ret = func(arg);
+
+    syscall::exit(ret);
+    syscall::switch(KERNEL_TASK_ID);
+    unreachable!()
 }
 
 impl Process {
@@ -44,17 +56,15 @@ impl Process {
             id,
             stack,
             context: Context {
-                rip: entry,
+                rip: process_entry_trampoline as *const () as usize,
                 rsp,
-                initial_rdi: arg,
+                initial_rdi: entry,
+                initial_rsi: arg,
                 rflags: 0x202,
                 ..Default::default()
             },
+            exit_code: None,
         }
-    }
-    #[allow(unused)]
-    pub fn from_fn(entry: extern "C" fn(), stack: Vec<u8>, arg: usize) -> Self {
-        Self::new(entry as usize, stack, arg)
     }
 
     pub fn register(self) -> ProcessId {
@@ -64,6 +74,15 @@ impl Process {
             table.insert(id, self);
         }
         id
+    }
+
+    #[allow(unused)]
+    pub fn exited(self) -> bool {
+        self.exit_code.is_some()
+    }
+
+    pub fn set_exit_code(&mut self, exit_code: usize) {
+        self.exit_code = Some(exit_code)
     }
 }
 
@@ -84,7 +103,8 @@ pub struct Context {
 
     pub rflags: usize,
 
-    pub initial_rdi: usize
+    pub initial_rdi: usize,
+    pub initial_rsi: usize,
 }
 
 pub unsafe fn switch(old: &mut Process, new: &Process) {
@@ -127,8 +147,9 @@ pub unsafe extern "C" fn context_switch(_old: *mut Context, _new: *const Context
         push rax
         popfq
 
-        mov rdi, [rsi + {offset_initial_rdi}]
         mov rax, [rsi + {offset_rip}]
+        mov rdi, [rsi + {offset_initial_rdi}]
+        mov rsi, [rsi + {offset_initial_rsi}]
         jmp rax
 
         .resume:
@@ -143,6 +164,7 @@ pub unsafe extern "C" fn context_switch(_old: *mut Context, _new: *const Context
         offset_rip = const core::mem::offset_of!(Context, rip),
         offset_rsp = const core::mem::offset_of!(Context, rsp),
         offset_rflags = const core::mem::offset_of!(Context, rflags),
+        offset_initial_rsi = const core::mem::offset_of!(Context, initial_rsi),
         offset_initial_rdi = const core::mem::offset_of!(Context, initial_rdi),
     )
 }

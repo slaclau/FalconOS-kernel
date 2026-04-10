@@ -80,23 +80,13 @@ pub fn run() {
     let done = syscall::switch(init);
 
     log!(RING_BUFFER, "back to kernel control from {done}");
+
+    let exit_code = syscall::wait(init);
+    log!(RING_BUFFER, "init exited with {exit_code}");
 }
 
-extern "C" fn bs_task(_arg: usize) {
+extern "C" fn bs_task(_arg: usize) -> usize {
     let pid = syscall::get_pid();
-    let next = syscall::spawn(bs_task2, pid);
     log!(RING_BUFFER, "bs 1 started with pid {pid}");
-
-    log!(RING_BUFFER, "bs 1 yielding to {next}");
-    let prev = syscall::switch(next);
-    log!(RING_BUFFER, "bs 1 got control back from {prev}");
-}
-
-extern "C" fn bs_task2(next: usize) {
-    let pid = syscall::get_pid();
-    log!(RING_BUFFER, "bs 2 started with pid {pid}");
-
-    log!(RING_BUFFER, "bs 2 yielding to {next}");
-    let prev = syscall::switch(next);
-    log!(RING_BUFFER, "bs 2 got control back from {prev}");
+    0
 }
