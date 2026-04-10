@@ -21,6 +21,7 @@ pub struct BootInformation<'a> {
 }
 
 impl<'a> BootInformation<'a> {
+    #[allow(clippy::missing_safety_doc)]
     pub unsafe fn load(ptr: u32) -> Self {
         let header = unsafe { &*(ptr as *const BootInformationHeader) };
         let payload = unsafe {
