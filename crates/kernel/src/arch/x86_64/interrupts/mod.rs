@@ -16,7 +16,9 @@ use crate::{
         },
     },
     log,
-    syscall::{handle_sys_exit, handle_sys_get_pid, handle_sys_spawn, handle_sys_switch, handle_sys_wait},
+    syscall::{
+        handle_sys_exit, handle_sys_get_pid, handle_sys_spawn, handle_sys_switch, handle_sys_wait,
+    },
 };
 
 static IDT: Once<idt::Table> = Once::new();

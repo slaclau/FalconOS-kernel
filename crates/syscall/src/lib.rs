@@ -18,7 +18,7 @@ pub fn get_pid() -> usize {
     unsafe { syscall0(SYS_GET_PID) }
 }
 
-pub fn spawn(entry: extern "C" fn(usize) -> usize, arg: usize) -> usize {
+pub fn spawn(entry: usize, arg: usize) -> usize {
     unsafe { syscall2(SYS_SPAWN, entry as usize, arg) }
 }
 

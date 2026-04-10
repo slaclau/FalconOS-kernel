@@ -53,7 +53,7 @@ pub struct Header {
     pub file_type: FileType,
     isa: u16,
     version: u32,
-    entry: u64,
+    pub entry: u64,
     pub phoff: u64,
     pub shoff: u64,
     flags: u32,
@@ -239,7 +239,7 @@ impl<'a> ProgramHeaderTable<'a> {
 #[repr(C)]
 pub struct ProgramHeader {
     pub segment_type: SegmentType,
-    pub flags: u32,
+    pub flags: SegmentFlags,
     pub offset: u64,
     pub vaddr: u64,
     pub paddr: u64,
@@ -318,12 +318,12 @@ impl ProgramHeader {
                 paddr: get_u64(),
                 file_size: get_u64(),
                 mem_size: get_u64(),
-                flags: get_u32(),
+                flags: SegmentFlags(get_u32()),
                 align: get_u64(),
             },
             Architecture::Bits64 => Self {
                 segment_type: get_u32().into(),
-                flags: get_u32(),
+                flags: SegmentFlags(get_u32()),
                 offset: get_u64(),
                 vaddr: get_u64(),
                 paddr: get_u64(),
@@ -419,6 +419,32 @@ impl From<u32> for SegmentType {
             7 => SegmentType::ThreadLocalStorage,
             val => SegmentType::OtherReserved(val),
         }
+    }
+}
+
+#[derive(Clone, Copy)]
+#[repr(C)]
+pub struct SegmentFlags(u32);
+
+impl SegmentFlags {
+    fn executable(self) -> bool {
+        self.0 & 0x1 > 0
+    }
+    fn writeable(self) -> bool {
+        self.0 & 0x2 > 0
+    }
+    fn readable(self) -> bool {
+        self.0 & 0x4 > 0
+    }
+}
+
+impl Debug for SegmentFlags {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("SegmentFlags")
+            .field("X", &self.executable())
+            .field("W", &self.writeable())
+            .field("R", &self.readable())
+            .finish()
     }
 }
 
@@ -597,7 +623,7 @@ impl From<u32> for SectionType {
 pub struct SectionFlags(u64);
 
 impl SectionFlags {
-    pub fn writable(&self) -> bool {
+    pub fn writeable(&self) -> bool {
         self.0 & 1 > 0
     }
     pub fn alloc(&self) -> bool {
@@ -629,7 +655,7 @@ impl SectionFlags {
 impl Debug for SectionFlags {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("SectionFlags")
-            .field("W", &self.writable())
+            .field("W", &self.writeable())
             .field("A", &self.alloc())
             .field("X", &self.executable())
             .field("M", &self.merge())

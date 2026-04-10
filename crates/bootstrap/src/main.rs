@@ -11,5 +11,7 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn _start() -> ! {
-    loop {}
+    loop {
+        unsafe { core::arch::asm!("int3") }
+    }
 }

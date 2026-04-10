@@ -1,4 +1,7 @@
-use core::{fmt::{Debug, Write}, sync::atomic::AtomicUsize};
+use core::{
+    fmt::{Debug, Write},
+    sync::atomic::AtomicUsize,
+};
 
 use alloc::{collections::btree_map::BTreeMap, vec::Vec};
 
@@ -12,10 +15,15 @@ pub static CURRENT_PROCESS_ID: AtomicUsize = AtomicUsize::new(0);
 pub static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
 
 pub fn init_multiprocessing() {
-    extern "C" fn kernel_task(_arg: usize) -> usize {0}
-    let k = syscall::spawn(kernel_task, 0);
+    extern "C" fn kernel_task(_arg: usize) -> usize {
+        0
+    }
+    let k = syscall::spawn(kernel_task as usize, 0);
     assert_eq!(k, KERNEL_TASK_ID);
-    log!(RING_BUFFER, "multiprocessing initialized, kernel task running as {k}");
+    log!(
+        RING_BUFFER,
+        "multiprocessing initialized, kernel task running as {k}"
+    );
 }
 
 #[repr(C)]
@@ -23,7 +31,7 @@ pub struct Process {
     id: ProcessId,
     context: Context,
     stack: Vec<u8>,
-    pub exit_code: Option<usize>
+    pub exit_code: Option<usize>,
 }
 
 impl Debug for Process {
@@ -37,7 +45,7 @@ impl Debug for Process {
 
 #[unsafe(no_mangle)]
 extern "C" fn process_entry_trampoline(entry: usize, arg: usize) -> ! {
-    let func: fn(usize) -> usize = unsafe{ core::mem::transmute(entry)};
+    let func: fn(usize) -> usize = unsafe { core::mem::transmute(entry) };
 
     let ret = func(arg);
 

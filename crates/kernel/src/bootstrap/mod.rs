@@ -1,7 +1,7 @@
 use core::fmt::{Debug, Write};
 
 use crate::{PhysicalAddress, process::KERNEL_TASK_ID};
-use elf::Elf;
+use elf::{Elf, SegmentType};
 use tar::Archive;
 
 use crate::{BOOTSTRAP_INFO, RING_BUFFER, log};
@@ -73,16 +73,29 @@ pub fn run() {
         initial_file.header_record.path()
     );
 
-    let _elf = Elf(bytes);
+    let elf = Elf(bytes);
 
-    let init = syscall::spawn(bs_task, KERNEL_TASK_ID);
+    for s in elf.program_header().entries() {
+        if s.segment_type == SegmentType::Loadable && s.vaddr > 0 {
+            log!(RING_BUFFER, "{s:?}");
+            unsafe {
+                core::ptr::copy(
+                    (&bytes[0] as *const u8).add(s.offset as usize),
+                    s.vaddr as *mut u8,
+                    s.file_size as usize,
+                );
+            }
+        }
+    }
 
-    let done = syscall::switch(init);
+    let bs = syscall::spawn(elf.header().entry as usize, 0);
+
+    let done = syscall::switch(bs);
 
     log!(RING_BUFFER, "back to kernel control from {done}");
 
-    let exit_code = syscall::wait(init);
-    log!(RING_BUFFER, "init exited with {exit_code}");
+    let exit_code = syscall::wait(bs);
+    log!(RING_BUFFER, "bs exited with {exit_code}");
 }
 
 extern "C" fn bs_task(_arg: usize) -> usize {
