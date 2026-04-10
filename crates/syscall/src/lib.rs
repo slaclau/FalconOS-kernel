@@ -1,6 +1,7 @@
 #![no_std]
 
 mod arch;
+
 use arch::*;
 
 pub const SYS_SWITCH: usize = 0;
@@ -21,8 +22,9 @@ pub fn spawn(entry: extern "C" fn(usize) -> usize, arg: usize) -> usize {
     unsafe { syscall2(SYS_SPAWN, entry as usize, arg) }
 }
 
-pub fn exit(exit_code: usize) -> usize {
-    unsafe { syscall1(SYS_EXIT, exit_code) }
+pub fn exit(exit_code: usize) -> ! {
+    unsafe { syscall1(SYS_EXIT, exit_code) };
+    unreachable!()
 }
 
 pub fn wait(pid: usize) -> usize {

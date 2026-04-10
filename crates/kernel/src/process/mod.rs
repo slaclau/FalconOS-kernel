@@ -42,8 +42,6 @@ extern "C" fn process_entry_trampoline(entry: usize, arg: usize) -> ! {
     let ret = func(arg);
 
     syscall::exit(ret);
-    syscall::switch(KERNEL_TASK_ID);
-    unreachable!()
 }
 
 impl Process {

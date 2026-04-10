@@ -88,5 +88,6 @@ pub fn run() {
 extern "C" fn bs_task(_arg: usize) -> usize {
     let pid = syscall::get_pid();
     log!(RING_BUFFER, "bs 1 started with pid {pid}");
-    0
+
+    syscall::exit(5);
 }

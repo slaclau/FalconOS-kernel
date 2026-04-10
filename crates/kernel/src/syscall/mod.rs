@@ -1,7 +1,7 @@
 use alloc::vec;
 use hal::halt;
 
-use crate::process::{CURRENT_PROCESS_ID, PROCESS_TABLE, Process, switch_process};
+use crate::process::{CURRENT_PROCESS_ID, KERNEL_TASK_ID, PROCESS_TABLE, Process, switch_process};
 
 pub fn handle_sys_switch(next_id: usize) -> usize {
     switch_process(next_id)
@@ -25,7 +25,7 @@ pub fn handle_sys_exit(exit_code: usize) -> usize {
         let proc = table.get_mut(&id).expect("Invalid process");
         proc.set_exit_code(exit_code);
     }
-    exit_code
+    switch_process(KERNEL_TASK_ID)
 }
 
 pub fn handle_sys_wait(pid: usize) -> usize {
