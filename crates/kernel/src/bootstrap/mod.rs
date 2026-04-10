@@ -82,31 +82,21 @@ pub fn run() {
     log!(RING_BUFFER, "back to kernel control from {done}");
 }
 
-extern "C" fn bs_task(k_task: usize) {
+extern "C" fn bs_task(_arg: usize) {
     let pid = syscall::get_pid();
-    let next = syscall::spawn(bs_task2, k_task);
+    let next = syscall::spawn(bs_task2, pid);
     log!(RING_BUFFER, "bs 1 started with pid {pid}");
-    let mut i = 0;
-    loop {
-        i += 1;
-        if i % 10000000 == 0 {
-            log!(RING_BUFFER, "bs 1 yielding to {next}");
-            let prev = syscall::switch(next);
-            log!(RING_BUFFER, "bs 1 got control back from {prev}");
-        }
-    }
+
+    log!(RING_BUFFER, "bs 1 yielding to {next}");
+    let prev = syscall::switch(next);
+    log!(RING_BUFFER, "bs 1 got control back from {prev}");
 }
 
 extern "C" fn bs_task2(next: usize) {
     let pid = syscall::get_pid();
     log!(RING_BUFFER, "bs 2 started with pid {pid}");
-    let mut i = 0;
-    loop {
-        i += 1;
-        if i % 10000000 == 0 {
-            log!(RING_BUFFER, "bs 2 yielding to {next}");
-            let prev = syscall::switch(next);
-            log!(RING_BUFFER, "bs 2 got control back from {prev}");
-        }
-    }
+
+    log!(RING_BUFFER, "bs 2 yielding to {next}");
+    let prev = syscall::switch(next);
+    log!(RING_BUFFER, "bs 2 got control back from {prev}");
 }
