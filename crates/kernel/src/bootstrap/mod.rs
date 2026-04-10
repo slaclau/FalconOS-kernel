@@ -1,6 +1,7 @@
 use core::fmt::{Debug, Write};
 
 use crate::{PhysicalAddress, process::Process};
+use alloc::vec;
 use elf::Elf;
 use tar::Archive;
 
@@ -75,15 +76,15 @@ pub fn run() {
 
     let _elf = Elf(bytes);
 
-    let dummy_task = Process::new(dummy_task);
+    let dummy_task = Process::new(dummy_task, vec![0; 4096 * 4]);
     log!(RING_BUFFER, "{dummy_task:#x?}");
     dummy_task.register();
 
-    let bs_task = Process::new(bs_task);
+    let bs_task = Process::new(bs_task, vec![0; 4096 * 4]);
     log!(RING_BUFFER, "{bs_task:#x?}");
     let bs_task_id = bs_task.register();
 
-    let bs_task2 = Process::new(bs_task2);
+    let bs_task2 = Process::new(bs_task2, vec![0; 4096 * 4]);
     log!(RING_BUFFER, "{bs_task2:#x?}");
     bs_task2.register();
 

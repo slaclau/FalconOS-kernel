@@ -24,9 +24,11 @@ impl Debug for Process {
 }
 
 impl Process {
-    pub fn new(entry: extern "C" fn()) -> Self {
+    pub fn new(entry: extern "C" fn(), stack: Vec<u8>) -> Self {
         let id = NEXT_ID.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
-        let (stack, rsp) = alloc_stack();
+        let ptr = stack.as_ptr() as usize;
+        let stack_top = ptr + stack.len();
+        let rsp = stack_top & !0xF;
         Self {
             id,
             stack,
@@ -139,16 +141,4 @@ pub fn switch_process(next_id: ProcessId) {
             .expect("Invalid next process");
         switch(current, next);
     }
-}
-
-const STACK_SIZE: usize = 4096 * 4;
-
-fn alloc_stack() -> (Vec<u8>, usize) {
-    let stack = alloc::vec![0u8; STACK_SIZE];
-
-    let ptr = stack.as_ptr() as usize;
-
-    let rsp = (ptr + STACK_SIZE) & !0xF;
-
-    (stack, rsp)
 }
