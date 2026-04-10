@@ -1,6 +1,6 @@
 use core::fmt::{Debug, Write};
 
-use crate::{PhysicalAddress};
+use crate::{PhysicalAddress, process::KERNEL_TASK_ID};
 use elf::Elf;
 use tar::Archive;
 
@@ -75,39 +75,37 @@ pub fn run() {
 
     let _elf = Elf(bytes);
 
-    syscall::spawn(dummy_task);
-    let init = syscall::spawn(bs_task);
-    syscall::spawn(bs_task2);
+    let init = syscall::spawn(bs_task, KERNEL_TASK_ID);
+
     let done = syscall::switch(init);
 
     log!(RING_BUFFER, "back to kernel control from {done}");
 }
 
-extern "C" fn dummy_task() {}
-
-extern "C" fn bs_task() {
+extern "C" fn bs_task(k_task: usize) {
     let pid = syscall::get_pid();
+    let next = syscall::spawn(bs_task2, k_task);
     log!(RING_BUFFER, "bs 1 started with pid {pid}");
     let mut i = 0;
     loop {
         i += 1;
         if i % 10000000 == 0 {
-            log!(RING_BUFFER, "bs 1 yielding");
-            let prev = syscall::switch(2);
+            log!(RING_BUFFER, "bs 1 yielding to {next}");
+            let prev = syscall::switch(next);
             log!(RING_BUFFER, "bs 1 got control back from {prev}");
         }
     }
 }
 
-extern "C" fn bs_task2() {
+extern "C" fn bs_task2(next: usize) {
     let pid = syscall::get_pid();
     log!(RING_BUFFER, "bs 2 started with pid {pid}");
     let mut i = 0;
     loop {
         i += 1;
         if i % 10000000 == 0 {
-            log!(RING_BUFFER, "bs 2 yielding");
-            let prev = syscall::switch(0);
+            log!(RING_BUFFER, "bs 2 yielding to {next}");
+            let prev = syscall::switch(next);
             log!(RING_BUFFER, "bs 2 got control back from {prev}");
         }
     }

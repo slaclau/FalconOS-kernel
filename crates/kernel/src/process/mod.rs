@@ -1,11 +1,22 @@
-use core::{fmt::Debug, sync::atomic::AtomicUsize};
+use core::{fmt::{Debug, Write}, sync::atomic::AtomicUsize};
 
 use alloc::{collections::btree_map::BTreeMap, vec::Vec};
+
+use crate::{RING_BUFFER, log};
+
+pub const KERNEL_TASK_ID: ProcessId = 0;
 
 pub static mut PROCESS_TABLE: Option<BTreeMap<ProcessId, Process>> = Some(BTreeMap::new());
 pub static CURRENT_PROCESS_ID: AtomicUsize = AtomicUsize::new(0);
 
 pub static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
+
+pub fn init_multiprocessing() {
+    extern "C" fn kernel_task(_arg: usize) {}
+    let k = syscall::spawn(kernel_task, 0);
+    assert_eq!(k, KERNEL_TASK_ID);
+    log!(RING_BUFFER, "multiprocessing initialized, kernel task running as {k}");
+}
 
 #[repr(C)]
 pub struct Process {
@@ -24,7 +35,7 @@ impl Debug for Process {
 }
 
 impl Process {
-    pub fn new(entry: usize, stack: Vec<u8>) -> Self {
+    pub fn new(entry: usize, stack: Vec<u8>, arg: usize) -> Self {
         let id = NEXT_ID.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
         let ptr = stack.as_ptr() as usize;
         let stack_top = ptr + stack.len();
@@ -35,14 +46,15 @@ impl Process {
             context: Context {
                 rip: entry,
                 rsp,
+                initial_rdi: arg,
                 rflags: 0x202,
                 ..Default::default()
             },
         }
     }
     #[allow(unused)]
-    pub fn from_fn(entry: extern "C" fn(), stack: Vec<u8>) -> Self {
-        Self::new(entry as usize, stack)
+    pub fn from_fn(entry: extern "C" fn(), stack: Vec<u8>, arg: usize) -> Self {
+        Self::new(entry as usize, stack, arg)
     }
 
     pub fn register(self) -> ProcessId {
@@ -71,6 +83,8 @@ pub struct Context {
     pub rsp: usize,
 
     pub rflags: usize,
+
+    pub initial_rdi: usize
 }
 
 pub unsafe fn switch(old: &mut Process, new: &Process) {
@@ -113,6 +127,7 @@ pub unsafe extern "C" fn context_switch(_old: *mut Context, _new: *const Context
         push rax
         popfq
 
+        mov rdi, [rsi + {offset_initial_rdi}]
         mov rax, [rsi + {offset_rip}]
         jmp rax
 
@@ -128,10 +143,11 @@ pub unsafe extern "C" fn context_switch(_old: *mut Context, _new: *const Context
         offset_rip = const core::mem::offset_of!(Context, rip),
         offset_rsp = const core::mem::offset_of!(Context, rsp),
         offset_rflags = const core::mem::offset_of!(Context, rflags),
+        offset_initial_rdi = const core::mem::offset_of!(Context, initial_rdi),
     )
 }
 
-pub fn switch_process(next_id: ProcessId) {
+pub fn switch_process(next_id: ProcessId) -> usize {
     unsafe {
         let table = PROCESS_TABLE.as_mut().unwrap();
         let current_id = CURRENT_PROCESS_ID.swap(next_id, core::sync::atomic::Ordering::Relaxed);
@@ -144,5 +160,6 @@ pub fn switch_process(next_id: ProcessId) {
             .get(&next_id)
             .expect("Invalid next process");
         switch(current, next);
+        current_id
     }
 }

@@ -246,7 +246,7 @@ pub extern "C" fn syscall_handler(frame: &mut SyscallFrame) {
     let ret = match frame.rax {
         SYS_SWITCH => handle_sys_switch(frame.rdi),
         SYS_GET_PID => handle_sys_get_pid(),
-        SYS_SPAWN => handle_sys_spawn(frame.rdi),
+        SYS_SPAWN => handle_sys_spawn(frame.rdi, frame.rsi),
         _ => unimplemented!("unhandled syscall {}", frame.rax),
     };
 

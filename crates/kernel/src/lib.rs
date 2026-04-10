@@ -47,6 +47,8 @@ pub fn kernel_main() -> ! {
     allocator::init(heap_start, heap_start + HEAP_SIZE);
     log!(RING_BUFFER, "global allocator init called");
 
+    process::init_multiprocessing();
+
     bootstrap::run();
 
     loop {
