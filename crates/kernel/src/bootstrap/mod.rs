@@ -1,7 +1,6 @@
 use core::fmt::{Debug, Write};
 
-use crate::{PhysicalAddress, process::Process};
-use alloc::vec;
+use crate::{PhysicalAddress};
 use elf::Elf;
 use tar::Archive;
 
@@ -76,19 +75,12 @@ pub fn run() {
 
     let _elf = Elf(bytes);
 
-    let dummy_task = Process::new(dummy_task, vec![0; 4096 * 4]);
-    log!(RING_BUFFER, "{dummy_task:#x?}");
-    dummy_task.register();
+    syscall::spawn(dummy_task);
+    let init = syscall::spawn(bs_task);
+    syscall::spawn(bs_task2);
+    let done = syscall::switch(init);
 
-    let bs_task = Process::new(bs_task, vec![0; 4096 * 4]);
-    log!(RING_BUFFER, "{bs_task:#x?}");
-    let bs_task_id = bs_task.register();
-
-    let bs_task2 = Process::new(bs_task2, vec![0; 4096 * 4]);
-    log!(RING_BUFFER, "{bs_task2:#x?}");
-    bs_task2.register();
-
-    syscall::switch(bs_task_id);
+    log!(RING_BUFFER, "back to kernel control from {done}");
 }
 
 extern "C" fn dummy_task() {}
@@ -115,7 +107,7 @@ extern "C" fn bs_task2() {
         i += 1;
         if i % 10000000 == 0 {
             log!(RING_BUFFER, "bs 2 yielding");
-            let prev = syscall::switch(1);
+            let prev = syscall::switch(0);
             log!(RING_BUFFER, "bs 2 got control back from {prev}");
         }
     }

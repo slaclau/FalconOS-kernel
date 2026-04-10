@@ -3,7 +3,7 @@ use core::{arch::asm, fmt::Write, sync::atomic::AtomicUsize};
 use hal::{self};
 use macros::{assign_handlers, make_handlers};
 use spin::{Mutex, Once};
-use syscall::{SYS_GET_PID, SYS_SWITCH};
+use syscall::{SYS_GET_PID, SYS_SPAWN, SYS_SWITCH};
 
 use crate::{
     DEBUG_WRITER, RING_BUFFER,
@@ -16,7 +16,7 @@ use crate::{
         },
     },
     log,
-    syscall::{handle_sys_get_pid, handle_sys_switch},
+    syscall::{handle_sys_get_pid, handle_sys_spawn, handle_sys_switch},
 };
 
 static IDT: Once<idt::Table> = Once::new();
@@ -246,6 +246,7 @@ pub extern "C" fn syscall_handler(frame: &mut SyscallFrame) {
     let ret = match frame.rax {
         SYS_SWITCH => handle_sys_switch(frame.rdi),
         SYS_GET_PID => handle_sys_get_pid(),
+        SYS_SPAWN => handle_sys_spawn(frame.rdi),
         _ => unimplemented!("unhandled syscall {}", frame.rax),
     };
 

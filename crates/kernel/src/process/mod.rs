@@ -24,7 +24,7 @@ impl Debug for Process {
 }
 
 impl Process {
-    pub fn new(entry: extern "C" fn(), stack: Vec<u8>) -> Self {
+    pub fn new(entry: usize, stack: Vec<u8>) -> Self {
         let id = NEXT_ID.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
         let ptr = stack.as_ptr() as usize;
         let stack_top = ptr + stack.len();
@@ -33,12 +33,16 @@ impl Process {
             id,
             stack,
             context: Context {
-                rip: entry as usize,
+                rip: entry,
                 rsp,
                 rflags: 0x202,
                 ..Default::default()
             },
         }
+    }
+    #[allow(unused)]
+    pub fn from_fn(entry: extern "C" fn(), stack: Vec<u8>) -> Self {
+        Self::new(entry as usize, stack)
     }
 
     pub fn register(self) -> ProcessId {
