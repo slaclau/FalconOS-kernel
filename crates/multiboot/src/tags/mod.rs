@@ -64,8 +64,7 @@ impl TagContainer {
         unsafe { &*(bytes as *const _ as *const Self) }
     }
 
-    pub fn cast<T: Tag + ?Sized + Pointee<Metadata = usize>>(&self) -> &T
-    {
+    pub fn cast<T: Tag + ?Sized + Pointee<Metadata = usize>>(&self) -> &T {
         assert!(self.header.tag_type == T::TYPE);
 
         let base_ptr = ptr::addr_of!(self.header);
@@ -73,7 +72,7 @@ impl TagContainer {
         let dst_len = T::dst_len(&self.header);
 
         let ts_ptr = from_raw_parts(base_ptr, dst_len);
-        
+
         (unsafe { &*ts_ptr }) as _
     }
 }

@@ -657,10 +657,6 @@ impl<'a> StringTable<'a> {
             len
         };
         let name = str::from_utf8(&self.bytes[offset..offset + str_len]);
-        if name.is_ok() {
-            Some(name.ok()?)
-        } else {
-            None
-        }
+        if name.is_ok() { Some(name.ok()?) } else { None }
     }
 }
