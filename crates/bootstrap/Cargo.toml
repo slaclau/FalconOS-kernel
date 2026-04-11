@@ -6,3 +6,4 @@ edition = "2024"
 
 [dependencies]
 hal = {path = "../hal"}
+syscall = {path = "../syscall"}

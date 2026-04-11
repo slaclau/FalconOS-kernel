@@ -1,7 +1,11 @@
 use alloc::vec;
+use core::fmt::Write;
 use hal::halt;
 
-use crate::process::{CURRENT_PROCESS_ID, KERNEL_TASK_ID, PROCESS_TABLE, Process, switch_process};
+use crate::{
+    RING_BUFFER, log,
+    process::{CURRENT_PROCESS_ID, KERNEL_TASK_ID, PROCESS_TABLE, Process, switch_process},
+};
 
 pub fn handle_sys_switch(next_id: usize) -> usize {
     switch_process(next_id)
@@ -40,4 +44,11 @@ pub fn handle_sys_wait(pid: usize) -> usize {
             halt();
         }
     }
+}
+
+pub fn handle_sys_log(start: usize, length: usize) -> usize {
+    let bytes = unsafe { core::slice::from_raw_parts(start as *const u8, length) };
+    let message = str::from_utf8(bytes).expect("invalid message");
+    log!(RING_BUFFER, "from process {CURRENT_PROCESS_ID:?}: {message}");
+    0
 }

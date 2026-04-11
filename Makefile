@@ -45,7 +45,8 @@ $(kernel): rust_code $(rust_os) $(assembly_object_files) $(linker_script)
 		$(assembly_object_files) $(rust_os)
 
 rust_code:
-	@cargo build --target $(target)
+	@cargo build --target $(target) -p kernel
+	RUSTFLAGS="-C link-arg=-no-pie" cargo build --target $(target) -p bootstrap
 
 build/arch/$(arch)/%.o: crates/kernel/src/arch/$(arch)/loader/%.asm
 	@mkdir -p $(shell dirname $@)

@@ -3,7 +3,7 @@ use core::{arch::asm, fmt::Write, sync::atomic::AtomicUsize};
 use hal::{self};
 use macros::{assign_handlers, make_handlers};
 use spin::{Mutex, Once};
-use syscall::{SYS_EXIT, SYS_GET_PID, SYS_SPAWN, SYS_SWITCH, SYS_WAIT};
+use syscall::{SYS_EXIT, SYS_GET_PID, SYS_LOG, SYS_SPAWN, SYS_SWITCH, SYS_WAIT};
 
 use crate::{
     DEBUG_WRITER, RING_BUFFER,
@@ -17,7 +17,8 @@ use crate::{
     },
     log,
     syscall::{
-        handle_sys_exit, handle_sys_get_pid, handle_sys_spawn, handle_sys_switch, handle_sys_wait,
+        handle_sys_exit, handle_sys_get_pid, handle_sys_log, handle_sys_spawn, handle_sys_switch,
+        handle_sys_wait,
     },
 };
 
@@ -251,6 +252,7 @@ pub extern "C" fn syscall_handler(frame: &mut SyscallFrame) {
         SYS_SPAWN => handle_sys_spawn(frame.rdi, frame.rsi),
         SYS_EXIT => handle_sys_exit(frame.rdi),
         SYS_WAIT => handle_sys_wait(frame.rdi),
+        SYS_LOG => handle_sys_log(frame.rdi, frame.rsi),
         _ => unimplemented!("unhandled syscall {}", frame.rax),
     };
 
