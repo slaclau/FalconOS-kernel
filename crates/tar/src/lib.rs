@@ -25,7 +25,7 @@ impl<'a> Archive<'a> {
                         .expect("Not enough bytes for header"),
                 );
                 let file_size = header_record.size();
-                let n_file_records = file_size / RECORD_SIZE + 1;
+                let n_file_records = file_size.div_ceil(RECORD_SIZE);
 
                 let bytes =
                     &self.0[(pos + 1) * RECORD_SIZE..(pos + 1 + n_file_records) * RECORD_SIZE];
