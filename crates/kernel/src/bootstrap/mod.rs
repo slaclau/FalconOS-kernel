@@ -1,6 +1,6 @@
 use core::fmt::{Debug, Write};
 
-use crate::{PhysicalAddress, process::KERNEL_TASK_ID};
+use crate::PhysicalAddress;
 use elf::{Elf, SegmentType};
 use tar::Archive;
 
@@ -88,7 +88,12 @@ pub fn run() {
         }
     }
 
-    let bs = syscall::spawn(elf.header().entry as usize, 0);
+    let bs = syscall::spawn(
+        unsafe {
+            core::mem::transmute::<u64, extern "C" fn(arg: usize) -> usize>(elf.header().entry)
+        },
+        0,
+    );
 
     let done = syscall::switch(bs);
 
@@ -96,11 +101,4 @@ pub fn run() {
 
     let exit_code = syscall::wait(bs);
     log!(RING_BUFFER, "bs exited with {exit_code}");
-}
-
-extern "C" fn bs_task(_arg: usize) -> usize {
-    let pid = syscall::get_pid();
-    log!(RING_BUFFER, "bs 1 started with pid {pid}");
-
-    syscall::exit(5);
 }

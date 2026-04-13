@@ -4,6 +4,7 @@ use core::{
 };
 
 use alloc::{collections::btree_map::BTreeMap, vec::Vec};
+use syscall::ProcessId;
 
 use crate::{RING_BUFFER, log};
 
@@ -18,7 +19,7 @@ pub fn init_multiprocessing() {
     extern "C" fn kernel_task(_arg: usize) -> usize {
         0
     }
-    let k = syscall::spawn(kernel_task as usize, 0);
+    let k = syscall::spawn(kernel_task, 0);
     assert_eq!(k, KERNEL_TASK_ID);
     log!(
         RING_BUFFER,
@@ -91,8 +92,6 @@ impl Process {
         self.exit_code = Some(exit_code)
     }
 }
-
-pub type ProcessId = usize;
 
 #[derive(Debug, Default)]
 #[repr(C)]

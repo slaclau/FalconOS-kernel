@@ -11,15 +11,17 @@ pub const SYS_EXIT: usize = 3;
 pub const SYS_WAIT: usize = 4;
 pub const SYS_LOG: usize = 5;
 
-pub fn switch(process_id: usize) -> usize {
+pub type ProcessId = usize;
+
+pub fn switch(process_id: ProcessId) -> ProcessId {
     unsafe { syscall1(SYS_SWITCH, process_id) }
 }
 
-pub fn get_pid() -> usize {
+pub fn get_pid() -> ProcessId {
     unsafe { syscall0(SYS_GET_PID) }
 }
 
-pub fn spawn(entry: usize, arg: usize) -> usize {
+pub fn spawn(entry: extern "C" fn(arg: usize) -> usize, arg: usize) -> ProcessId {
     unsafe { syscall2(SYS_SPAWN, entry as usize, arg) }
 }
 
@@ -28,7 +30,7 @@ pub fn exit(exit_code: usize) -> ! {
     unreachable!()
 }
 
-pub fn wait(pid: usize) -> usize {
+pub fn wait(pid: ProcessId) -> usize {
     unsafe { syscall1(SYS_WAIT, pid) }
 }
 
