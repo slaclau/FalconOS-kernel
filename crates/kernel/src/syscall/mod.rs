@@ -3,7 +3,10 @@ use core::fmt::Write;
 use hal::halt;
 
 use crate::{
-    RING_BUFFER, log,
+    RING_BUFFER,
+    capability::recv,
+    ipc::{EndpointId, Message},
+    log,
     process::{CURRENT_PROCESS_ID, KERNEL_TASK_ID, PROCESS_TABLE, Process, switch_process},
 };
 
@@ -49,6 +52,22 @@ pub fn handle_sys_wait(pid: usize) -> usize {
 pub fn handle_sys_log(start: usize, length: usize) -> usize {
     let bytes = unsafe { core::slice::from_raw_parts(start as *const u8, length) };
     let message = str::from_utf8(bytes).expect("invalid message");
-    log!(RING_BUFFER, "from process {CURRENT_PROCESS_ID:?}: {message}");
+    log!(
+        RING_BUFFER,
+        "from process {CURRENT_PROCESS_ID:?}: {message}"
+    );
     0
+}
+
+pub fn handle_sys_recv(ep_id: EndpointId, mut message: &mut Message) -> usize {
+    let res = recv(
+        CURRENT_PROCESS_ID.load(core::sync::atomic::Ordering::Relaxed),
+        ep_id,
+    );
+    if let Ok(msg) = res {
+        message.clone_from(&msg);
+        0
+    } else {
+        usize::MAX
+    }
 }

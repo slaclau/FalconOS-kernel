@@ -2,6 +2,8 @@
 #![feature(abi_x86_interrupt)]
 #![feature(debug_closure_helpers)]
 #![feature(ptr_metadata)]
+#![feature(const_ops)]
+#![feature(const_trait_impl)]
 #![allow(static_mut_refs)]
 
 use core::{fmt::Write, ptr::from_raw_parts, slice};
@@ -17,6 +19,8 @@ use crate::utils::ring_buffer::{RING_BUFFER_LENGTH, RingBuffer};
 mod allocator;
 mod arch;
 mod bootstrap;
+mod capability;
+mod ipc;
 mod process;
 mod syscall;
 mod utils;
@@ -130,13 +134,13 @@ fn prepare_bootstrap_info_mb2(mb_ptr: u32) {
         .filter(needed_sections_filter)
         .map(|section| section.addr)
         .min()
-        .unwrap();
+        .unwrap() - 0xFFFF800000000000;
     let kernel_end = elf_sections_tag
         .entries()
         .filter(needed_sections_filter)
         .map(|section| section.addr + section.size)
         .max()
-        .unwrap();
+        .unwrap() - 0xFFFF800000000000;
 
     let mut bootstrap_info = BOOTSTRAP_INFO.lock();
 

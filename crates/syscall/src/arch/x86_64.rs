@@ -3,23 +3,23 @@
 macro_rules! syscall {
   ($($name:ident($a:ident, $($b:ident, $($c:ident, $($d:ident, $($e:ident, $($f:ident, $($g:ident, )?)?)?)?)?)?);)+) => {
       $(
-          pub unsafe fn $name($a: usize, $($b: usize, $($c: usize, $($d: usize, $($e: usize, $($f: usize, $($g: usize)?)?)?)?)?)?) -> usize {
+          pub unsafe fn $name($a: usize, $(mut $b: usize, $(mut $c: usize, $(mut $d: usize, $(mut $e: usize, $(mut $f: usize, $(mut $g: usize)?)?)?)?)?)?) -> usize {
               let ret: usize;
               unsafe{core::arch::asm!(
                   "int 0x80",
                   in("rax") $a,
                   $(
-                      in("rdi") $b,
+                      inlateout("rdi") $b,
                       $(
-                          in("rsi") $c,
+                        inlateout("rsi") $c,
                           $(
-                              in("rdx") $d,
+                            inlateout("rdx") $d,
                               $(
-                                  in("r10") $e,
+                                inlateout("r10") $e,
                                   $(
-                                      in("r8") $f,
+                                    inlateout("r8") $f,
                                       $(
-                                          in("r9") $g,
+                                        inlateout("r9") $g,
                                       )?
                                   )?
                               )?

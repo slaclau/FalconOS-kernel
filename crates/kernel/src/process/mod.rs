@@ -4,9 +4,13 @@ use core::{
 };
 
 use alloc::{collections::btree_map::BTreeMap, vec::Vec};
-use syscall::ProcessId;
+pub use syscall::ProcessId;
 
-use crate::{RING_BUFFER, log};
+use crate::{
+    RING_BUFFER,
+    capability::{self, Capability},
+    log,
+};
 
 pub const KERNEL_TASK_ID: ProcessId = 0;
 
@@ -28,11 +32,14 @@ pub fn init_multiprocessing() {
 }
 
 #[repr(C)]
+#[derive(Clone)]
 pub struct Process {
     id: ProcessId,
     context: Context,
     stack: Vec<u8>,
     pub exit_code: Option<usize>,
+    next_cap: usize,
+    caps: BTreeMap<usize, Option<Capability>>,
 }
 
 impl Debug for Process {
@@ -71,6 +78,8 @@ impl Process {
                 ..Default::default()
             },
             exit_code: None,
+            next_cap: 0,
+            caps: BTreeMap::new(),
         }
     }
 
@@ -91,9 +100,63 @@ impl Process {
     pub fn set_exit_code(&mut self, exit_code: usize) {
         self.exit_code = Some(exit_code)
     }
-}
 
-#[derive(Debug, Default)]
+    pub fn insert_cap(&mut self, cap: Capability) -> Result<usize, &'static str> {
+        let key = self.next_cap;
+        self.next_cap += 1;
+        self.caps.insert(key, Some(cap));
+        Ok(key)
+    }
+
+    pub fn get_cap(&self, cap_id: usize) -> Result<Capability, &'static str> {
+        let cap = self.caps
+            .get(&cap_id)
+            .ok_or("error: no cap at this id")?;
+        if cap.is_none() {
+            Err("error: cap has been moved/revoked")
+        } else {
+            Ok(cap.clone().unwrap())
+        }
+    }
+
+    pub fn remove_cap(&mut self, cap_id: usize) -> Result<Capability, &'static str> {
+        let cap = self.caps.insert(cap_id, None).unwrap();
+        Ok(cap.unwrap())
+    }
+
+    pub fn dump_caps(&self) {
+        log!(RING_BUFFER, "{self:?}");
+        for cap in &self.caps {
+            log!(RING_BUFFER, "  {cap:#x?}");
+        }
+    }
+
+    pub fn derive_cap(
+        &mut self,
+        cap_id: usize,
+        mask: capability::Rights,
+    ) -> Result<usize, &'static str> {
+        let cap = self.get_cap(cap_id)?;
+        let new_cap = cap.derive(mask)?;
+        self.insert_cap(new_cap)
+    }
+
+    pub fn move_cap(
+        &mut self,
+        cap_id: usize,
+        target_pid: ProcessId,
+    ) -> Result<usize, &'static str> {
+        let cap = self.remove_cap(cap_id)?;
+        log!(RING_BUFFER, "cap is {cap:?}");
+        let proc = Self::get_mut(target_pid);
+        proc.insert_cap(cap)
+    }
+
+    pub fn get_mut(pid: ProcessId) -> &'static mut Self {
+        unsafe { PROCESS_TABLE.as_mut().unwrap().get_mut(&pid).unwrap() }
+    }
+}
+#[derive(Debug, Default, Clone, Copy)]
 #[repr(C)]
 pub struct Context {
     pub r15: usize,

@@ -1,7 +1,7 @@
 mod entry;
 use core::{
     marker::PhantomData,
-    ops::{Index, IndexMut},
+    ops::{Index, IndexMut, Sub},
 };
 
 use entry::Entry;
@@ -11,7 +11,7 @@ pub const ENTRY_COUNT: usize = 512;
 
 pub const P4: *mut Table<Level4> = 0xffffffff_fffff000 as *mut _;
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct VirtualAddress(pub usize);
 
 impl VirtualAddress {
@@ -52,8 +52,15 @@ impl VirtualAddress {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PhysicalAddress(pub usize);
+
+impl Sub for PhysicalAddress {
+    type Output = usize;
+    fn sub(self, rhs: Self) -> Self::Output {
+        self.0 - rhs.0
+    }
+}
 
 #[derive(Clone, Copy)]
 pub struct Page {

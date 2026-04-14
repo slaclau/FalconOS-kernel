@@ -3,7 +3,7 @@ use core::{arch::asm, fmt::Write, sync::atomic::AtomicUsize};
 use hal::{self};
 use macros::{assign_handlers, make_handlers};
 use spin::{Mutex, Once};
-use syscall::{SYS_EXIT, SYS_GET_PID, SYS_LOG, SYS_SPAWN, SYS_SWITCH, SYS_WAIT};
+use syscall::{SYS_EXIT, SYS_GET_PID, SYS_LOG, SYS_RECV, SYS_SPAWN, SYS_SWITCH, SYS_WAIT};
 
 use crate::{
     DEBUG_WRITER, RING_BUFFER,
@@ -15,10 +15,11 @@ use crate::{
             idt::{self, PageFaultErrorCode},
         },
     },
+    ipc::Message,
     log,
     syscall::{
-        handle_sys_exit, handle_sys_get_pid, handle_sys_log, handle_sys_spawn, handle_sys_switch,
-        handle_sys_wait,
+        handle_sys_exit, handle_sys_get_pid, handle_sys_log, handle_sys_recv, handle_sys_spawn,
+        handle_sys_switch, handle_sys_wait,
     },
 };
 
@@ -246,6 +247,7 @@ pub struct SyscallFrame {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn syscall_handler(frame: &mut SyscallFrame) {
+    log!(RING_BUFFER, "handle syscall {frame:?}");
     let ret = match frame.rax {
         SYS_SWITCH => handle_sys_switch(frame.rdi),
         SYS_GET_PID => handle_sys_get_pid(),
@@ -253,6 +255,7 @@ pub extern "C" fn syscall_handler(frame: &mut SyscallFrame) {
         SYS_EXIT => handle_sys_exit(frame.rdi),
         SYS_WAIT => handle_sys_wait(frame.rdi),
         SYS_LOG => handle_sys_log(frame.rdi, frame.rsi),
+        SYS_RECV => handle_sys_recv(frame.rdi, unsafe { &mut *(frame.rsi as *mut Message) }),
         _ => unimplemented!("unhandled syscall {}", frame.rax),
     };
 
