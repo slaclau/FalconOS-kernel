@@ -25,8 +25,8 @@ pub enum KernelObject {
 
 #[derive(Clone, Debug)]
 pub struct Capability {
-    object: KernelObject,
-    rights: Rights,
+    pub object: KernelObject,
+    pub rights: Rights,
 }
 
 impl Capability {

@@ -19,11 +19,11 @@ pub fn init_multiprocessing() {
     extern "C" fn kernel_task(_arg: usize) -> usize {
         0
     }
-    let k = syscall::process::spawn(kernel_task, 0);
-    assert_eq!(k, KERNEL_TASK_ID);
+    let k = syscall::cap::Cap::<syscall::process::Process>::spawn(kernel_task, 0);
+    assert_eq!(k.handle, KERNEL_TASK_ID);
     log!(
         RING_BUFFER,
-        "multiprocessing initialized, kernel task running as {k}"
+        "multiprocessing initialized, kernel task running as {k:?}"
     );
 }
 

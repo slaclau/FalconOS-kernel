@@ -1,29 +1,52 @@
 use alloc::vec;
 use core::fmt::Write;
 use hal::halt;
-use syscall::{cap::Rights, ipc::Message, process::ProcessId};
+use syscall::{
+    cap::{CapHandle, Rights},
+    ipc::Message,
+    process::ProcessId,
+};
 
 use crate::{
     RING_BUFFER,
-    capability::{create_endpoint, derive_cap, move_cap, recv, send},
+    capability::{Capability, KernelObject, create_endpoint, derive_cap, move_cap, recv, send},
     ipc::EndpointId,
     log,
     process::{CURRENT_PROCESS_ID, KERNEL_TASK_ID, PROCESS_TABLE, Process, switch_process},
 };
 
-pub fn handle_sys_switch(next_id: usize) -> usize {
-    switch_process(next_id)
+pub fn handle_sys_switch(cap_id: usize) -> usize {
+    let proc = Process::get_mut(CURRENT_PROCESS_ID.load(core::sync::atomic::Ordering::Relaxed));
+    let cap = proc.get_cap(cap_id).unwrap();
+
+    match cap.object {
+        KernelObject::Process(next_id) => {
+            if cap.has_rights(Rights::EXEC).is_ok() {
+                switch_process(next_id)
+            } else {
+                usize::MAX
+            }
+        }
+        _ => usize::MAX,
+    }
 }
 
-pub fn handle_sys_get_pid() -> usize {
+pub fn handle_sys_get_pid() -> ProcessId {
     CURRENT_PROCESS_ID.load(core::sync::atomic::Ordering::Relaxed)
 }
 
 pub const STACK_SIZE: usize = 4096 * 2;
-pub fn handle_sys_spawn(entry: usize, arg: usize) -> usize {
+pub fn handle_sys_spawn(entry: usize, arg: usize) -> CapHandle {
     let stack = vec![0; STACK_SIZE];
     let process = Process::new(entry, stack, arg);
-    process.register()
+    let pid = process.register();
+    let cap = Capability {
+        object: KernelObject::Process(pid),
+        rights: Rights::ALL,
+    };
+    Process::get_mut(CURRENT_PROCESS_ID.load(core::sync::atomic::Ordering::Relaxed))
+        .insert_cap(cap)
+        .unwrap()
 }
 
 pub fn handle_sys_exit(exit_code: usize) -> usize {

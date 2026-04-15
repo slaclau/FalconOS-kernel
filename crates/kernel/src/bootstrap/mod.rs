@@ -90,12 +90,12 @@ pub fn run() {
         }
     }
 
-    let bs = syscall::process::spawn(
+    let bs = syscall::cap::Cap::<syscall::process::Process>::spawn(
         unsafe {
             core::mem::transmute::<u64, extern "C" fn(arg: usize) -> usize>(elf.header().entry)
         },
         0,
     );
     log!(RING_BUFFER, "switch to boostrap process");
-    syscall::process::switch(bs);
+    bs.switch();
 }

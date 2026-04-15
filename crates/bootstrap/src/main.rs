@@ -1,7 +1,9 @@
 #![no_std]
 #![no_main]
 
-use syscall::cap::Rights;
+use syscall::cap::{CapHandle, Rights};
+use syscall::ipc::Endpoint;
+use syscall::process::Process;
 
 #[cfg_attr(not(test), panic_handler)]
 #[allow(unused)]
@@ -14,36 +16,49 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn _start() -> ! {
-    let echo_proc_id = syscall::process::spawn(echo, 0);
+    let args = EchoArgs {
+        parent_handle: 0,
+        ep_handle: 1
+    };
+    let echo_proc = syscall::cap::Cap::<syscall::process::Process>::spawn(echo, &args as *const _ as usize);
 
-    let send_ep_id = syscall::ipc::create_endpoint().expect("could not create endpoint");
-    let recv_ep_id = syscall::cap::derive_cap(send_ep_id, Rights::RWE);
-    let echo_proc_ep_id = syscall::cap::move_cap(echo_proc_id, recv_ep_id);
-    assert!(echo_proc_ep_id == 0);
+    let send_ep = syscall::ipc::create_endpoint().expect("could not create endpoint");
+    let recv_ep = send_ep.derive(Rights::RWE);
+    recv_ep.r#move(echo_proc);
 
     loop {
         syscall::log("send message to echo");
         let msg = "send to echo".into();
-        syscall::ipc::send(send_ep_id, msg).expect("could not send");
-        syscall::process::switch(echo_proc_id);
-        let resp = syscall::ipc::recv(send_ep_id).expect("could not receive");
+        send_ep.send(msg).expect("could not send");
+        echo_proc.switch();
+        let resp = send_ep.recv().expect("could not receive");
         assert_eq!(msg, resp);
         syscall::log("received message from echo");
     }
 }
+
+#[derive(Clone, Copy)]
+pub struct EchoArgs {
+    parent_handle: CapHandle,
+    ep_handle: CapHandle,
+}
+
 #[unsafe(no_mangle)]
-pub extern "C" fn echo(cap_id: usize) -> usize {
+pub extern "C" fn echo(arg_ptr: usize) -> usize {
+    let args = unsafe{*(arg_ptr as *const EchoArgs)};
+    let parent_proc = unsafe { syscall::cap::Cap::<Process>::from_handle(args.parent_handle) };
+    let ep = unsafe { syscall::cap::Cap::<Endpoint>::from_handle(args.ep_handle) };
     loop {
         syscall::log("receive message from bs");
-        let msg = syscall::ipc::recv(cap_id).expect("could not recv");
-        syscall::ipc::send(cap_id, msg).expect("could not send");
+        let msg = ep.recv().expect("could not recv");
+        ep.send(msg).expect("could not send");
         syscall::log("send message back to bs");
-        syscall::process::switch(1);
+        parent_proc.switch();
     }
 }
 
 use core::cmp::min;
-use core::fmt;
+use core::{fmt, usize};
 use core::str::from_utf8;
 
 /// A struct representing a writer that appends formatted data to a byte buffer.

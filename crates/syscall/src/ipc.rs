@@ -1,13 +1,30 @@
 use core::mem;
 
-use crate::*;
+use crate::{
+    cap::{Cap, CapHandle, CapType},
+    *,
+};
 
-pub fn create_endpoint() -> Result<usize, &'static str> {
-    let res = unsafe { syscall0(SYS_CREATE_ENDPOINT) };
-    Ok(res)
+#[derive(Clone, Copy)]
+pub struct Endpoint;
+impl CapType for Endpoint {}
+
+impl Cap<Endpoint> {
+    pub fn send(self, message: Message) -> Result<(), IpcError> {
+        send(self.handle, message)
+    }
+
+    pub fn recv(self) -> Result<Message, IpcError> {
+        recv(self.handle)
+    }
 }
 
-pub fn send(ep_id: usize, message: Message) -> Result<(), IpcError> {
+pub fn create_endpoint() -> Result<Cap<Endpoint>, &'static str> {
+    let res = unsafe { syscall0(SYS_CREATE_ENDPOINT) };
+    Ok(Cap::<Endpoint>::new(res))
+}
+
+fn send(ep_id: CapHandle, message: Message) -> Result<(), IpcError> {
     let code = unsafe {
         syscall5(
             SYS_SEND,
@@ -21,7 +38,7 @@ pub fn send(ep_id: usize, message: Message) -> Result<(), IpcError> {
     if code == 0 { Ok(()) } else { Err(code.into()) }
 }
 
-pub fn recv(ep_id: usize) -> Result<Message, IpcError> {
+fn recv(ep_id: CapHandle) -> Result<Message, IpcError> {
     let (res, words) = unsafe { out_syscall5(SYS_RECV, ep_id, 0, 0, 0, 0) };
 
     if res == 0 {
@@ -89,7 +106,7 @@ pub enum IpcError {
 
 impl From<usize> for IpcError {
     fn from(value: usize) -> Self {
-        if (0..=2).contains(&value) {
+        if (0..=3).contains(&value) {
             unsafe { mem::transmute::<usize, IpcError>(value) }
         } else {
             IpcError::Unknown

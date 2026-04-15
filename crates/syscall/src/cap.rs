@@ -1,4 +1,46 @@
-use crate::{process::ProcessId, *};
+use core::{marker::PhantomData, mem};
+
+use crate::{process::Process, *};
+
+pub struct Untyped;
+
+pub type CapHandle = usize;
+pub trait CapType {}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Cap<T: CapType> {
+    pub handle: CapHandle,
+    phantom: PhantomData<T>,
+}
+
+impl<T: CapType> Cap<T> {
+    pub(crate) fn new(handle: CapHandle) -> Self {
+        Self {
+            handle,
+            phantom: PhantomData,
+        }
+    }
+
+    pub fn derive(self, mask: Rights) -> Self {
+        let handle = derive_cap(self.handle, mask);
+        Self {
+            handle,
+            phantom: PhantomData,
+        }
+    }
+
+    pub fn r#move(self, process: Cap<Process>) -> CapHandle {
+        move_cap(process.handle, self.handle)
+    }
+
+    #[allow(clippy::missing_safety_doc)]
+    pub unsafe fn from_handle(handle: CapHandle) -> Self {
+        Self {
+            handle,
+            phantom: PhantomData,
+        }
+    }
+}
 
 #[derive(Clone, Copy)]
 pub struct Rights(u8);
@@ -64,10 +106,28 @@ impl From<usize> for Rights {
     }
 }
 
-pub fn derive_cap(cap_id: usize, mask: Rights) -> usize {
+fn derive_cap(cap_id: CapHandle, mask: Rights) -> usize {
     unsafe { syscall2(SYS_DERIVE_CAP, cap_id, mask.0 as usize) }
 }
 
-pub fn move_cap(process_id: ProcessId, cap_id: usize) -> usize {
-    unsafe { syscall2(SYS_MOVE_CAP, process_id, cap_id) }
+fn move_cap(process_handle: CapHandle, cap_handle: CapHandle) -> usize {
+    unsafe { syscall2(SYS_MOVE_CAP, process_handle, cap_handle) }
+}
+
+#[allow(clippy::enum_clike_unportable_variant)]
+#[repr(usize)]
+pub enum CapError {
+    Ok = 0,
+    NoGrant = 1,
+    Unknown = usize::MAX,
+}
+
+impl From<usize> for CapError {
+    fn from(value: usize) -> Self {
+        if (0..=1).contains(&value) {
+            unsafe { mem::transmute::<usize, CapError>(value) }
+        } else {
+            CapError::Unknown
+        }
+    }
 }
