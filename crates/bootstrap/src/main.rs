@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use syscall::Rights;
+use syscall::cap::Rights;
 
 #[cfg_attr(not(test), panic_handler)]
 #[allow(unused)]
@@ -14,19 +14,19 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn _start() -> ! {
-    let echo_proc_id = syscall::spawn(echo, 0);
+    let echo_proc_id = syscall::process::spawn(echo, 0);
 
-    let send_ep_id = syscall::create_endpoint().expect("could not create endpoint");
-    let recv_ep_id = syscall::derive_cap(send_ep_id, Rights::RWE);
-    let echo_proc_ep_id = syscall::move_cap(echo_proc_id, recv_ep_id);
+    let send_ep_id = syscall::ipc::create_endpoint().expect("could not create endpoint");
+    let recv_ep_id = syscall::cap::derive_cap(send_ep_id, Rights::RWE);
+    let echo_proc_ep_id = syscall::cap::move_cap(echo_proc_id, recv_ep_id);
     assert!(echo_proc_ep_id == 0);
 
     loop {
         syscall::log("send message to echo");
         let msg = "send to echo".into();
-        syscall::send(send_ep_id,msg).expect("could not send");
-        syscall::switch(echo_proc_id);
-        let resp = syscall::recv(send_ep_id).expect("could not receive");
+        syscall::ipc::send(send_ep_id, msg).expect("could not send");
+        syscall::process::switch(echo_proc_id);
+        let resp = syscall::ipc::recv(send_ep_id).expect("could not receive");
         assert_eq!(msg, resp);
         syscall::log("received message from echo");
     }
@@ -35,10 +35,10 @@ pub extern "C" fn _start() -> ! {
 pub extern "C" fn echo(cap_id: usize) -> usize {
     loop {
         syscall::log("receive message from bs");
-        let msg = syscall::recv(cap_id).expect("could not recv");
-        syscall::send(cap_id, msg).expect("could not send");
+        let msg = syscall::ipc::recv(cap_id).expect("could not recv");
+        syscall::ipc::send(cap_id, msg).expect("could not send");
         syscall::log("send message back to bs");
-        syscall::switch(1);
+        syscall::process::switch(1);
     }
 }
 

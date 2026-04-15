@@ -4,7 +4,7 @@ use core::{
 };
 
 use alloc::{collections::btree_map::BTreeMap, vec::Vec};
-pub use syscall::ProcessId;
+pub use syscall::process::ProcessId;
 
 use crate::{RING_BUFFER, capability::Capability, log};
 
@@ -19,7 +19,7 @@ pub fn init_multiprocessing() {
     extern "C" fn kernel_task(_arg: usize) -> usize {
         0
     }
-    let k = syscall::spawn(kernel_task, 0);
+    let k = syscall::process::spawn(kernel_task, 0);
     assert_eq!(k, KERNEL_TASK_ID);
     log!(
         RING_BUFFER,
@@ -53,7 +53,7 @@ extern "C" fn process_entry_trampoline(entry: usize, arg: usize) -> ! {
 
     let ret = func(arg);
 
-    syscall::exit(ret);
+    syscall::process::exit(ret);
 }
 
 impl Process {
@@ -129,7 +129,7 @@ impl Process {
     pub fn derive_cap(
         &mut self,
         cap_id: usize,
-        mask: syscall::Rights,
+        mask: syscall::cap::Rights,
     ) -> Result<usize, &'static str> {
         let cap = self.get_cap(cap_id)?;
         let new_cap = cap.derive(mask)?;

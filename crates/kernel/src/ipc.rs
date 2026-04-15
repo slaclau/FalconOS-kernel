@@ -1,7 +1,7 @@
 use core::sync::atomic::AtomicUsize;
 
 use alloc::collections::btree_map::BTreeMap;
-use syscall::{IpcError, Message};
+use syscall::ipc::{IpcError, Message};
 
 pub static mut ENDPOINTS: BTreeMap<EndpointId, Endpoint> = BTreeMap::new();
 

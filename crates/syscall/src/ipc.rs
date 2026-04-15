@@ -1,0 +1,98 @@
+use core::mem;
+
+use crate::*;
+
+pub fn create_endpoint() -> Result<usize, &'static str> {
+    let res = unsafe { syscall0(SYS_CREATE_ENDPOINT) };
+    Ok(res)
+}
+
+pub fn send(ep_id: usize, message: Message) -> Result<(), IpcError> {
+    let code = unsafe {
+        syscall5(
+            SYS_SEND,
+            ep_id,
+            message.data[0],
+            message.data[1],
+            message.data[2],
+            message.data[3],
+        )
+    };
+    if code == 0 { Ok(()) } else { Err(code.into()) }
+}
+
+pub fn recv(ep_id: usize) -> Result<Message, IpcError> {
+    let (res, words) = unsafe { out_syscall5(SYS_RECV, ep_id, 0, 0, 0, 0) };
+
+    if res == 0 {
+        Ok(Message {
+            data: *words[1..5].as_array().unwrap(),
+        })
+    } else {
+        Err(res.into())
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Message {
+    pub data: [usize; 4],
+}
+
+impl Message {
+    pub fn to_string(self, bytes_buf: &mut [u8; 32]) -> &str {
+        let bytes = self.data.iter().flat_map(|word| word.to_be_bytes());
+
+        for (i, byte) in bytes.enumerate() {
+            bytes_buf[i] = byte;
+        }
+        str::from_utf8(bytes_buf).unwrap()
+    }
+}
+
+impl From<&str> for Message {
+    fn from(value: &str) -> Self {
+        let bytes = value.as_bytes();
+        let chunks = bytes.chunks(8);
+
+        let mut words = chunks.map(|chunk| {
+            let mut buf = [0u8; size_of::<usize>()];
+            buf[0..chunk.len()].copy_from_slice(chunk);
+            usize::from_be_bytes(buf)
+        });
+
+        let mut data = [0usize; 4];
+        let b_data = &mut data;
+
+        for word in b_data {
+            *word = words.next().unwrap_or(0);
+        }
+        Self { data }
+    }
+}
+
+impl From<[usize; 4]> for Message {
+    fn from(value: [usize; 4]) -> Self {
+        Self { data: value }
+    }
+}
+
+#[allow(clippy::enum_clike_unportable_variant)]
+#[derive(Debug)]
+#[repr(usize)]
+pub enum IpcError {
+    Ok = 0,
+    WrongRights = 1,
+    Full = 2,
+    InvalidEndpoint = 3,
+    Unknown = usize::MAX,
+}
+
+impl From<usize> for IpcError {
+    fn from(value: usize) -> Self {
+        if (0..=2).contains(&value) {
+            unsafe { mem::transmute::<usize, IpcError>(value) }
+        } else {
+            IpcError::Unknown
+        }
+    }
+}

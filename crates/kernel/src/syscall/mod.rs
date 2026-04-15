@@ -1,7 +1,7 @@
 use alloc::vec;
 use core::fmt::Write;
 use hal::halt;
-use syscall::{Message, ProcessId, Rights};
+use syscall::{cap::Rights, ipc::Message, process::ProcessId};
 
 use crate::{
     RING_BUFFER,

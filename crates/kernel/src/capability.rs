@@ -3,7 +3,10 @@ use core::{
     fmt::Debug,
 };
 
-use syscall::{IpcError, Message, Rights};
+use syscall::{
+    cap::Rights,
+    ipc::{IpcError, Message},
+};
 
 use crate::{
     PhysicalAddress,
