@@ -43,7 +43,16 @@ pub fn log(message: &str) -> usize {
 
 pub fn recv(ep_id: usize) -> (usize, Message) {
     let mut msg = Message::default();
-    let res = unsafe { syscall5(SYS_RECV, ep_id, &mut msg.data[0] as *mut _ as usize, &mut msg.data[1] as *mut _ as usize, &mut msg.data[2] as *mut _ as usize, &mut msg.data[3] as *mut _ as usize) };
+    let res = unsafe {
+        syscall5(
+            SYS_RECV,
+            ep_id,
+            &mut msg.data[0] as *mut _ as usize,
+            &mut msg.data[1] as *mut _ as usize,
+            &mut msg.data[2] as *mut _ as usize,
+            &mut msg.data[3] as *mut _ as usize,
+        )
+    };
     (res, msg)
 }
 

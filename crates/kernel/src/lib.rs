@@ -134,13 +134,15 @@ fn prepare_bootstrap_info_mb2(mb_ptr: u32) {
         .filter(needed_sections_filter)
         .map(|section| section.addr)
         .min()
-        .unwrap() - 0xFFFF800000000000;
+        .unwrap()
+        - 0xFFFF800000000000;
     let kernel_end = elf_sections_tag
         .entries()
         .filter(needed_sections_filter)
         .map(|section| section.addr + section.size)
         .max()
-        .unwrap() - 0xFFFF800000000000;
+        .unwrap()
+        - 0xFFFF800000000000;
 
     let mut bootstrap_info = BOOTSTRAP_INFO.lock();
 

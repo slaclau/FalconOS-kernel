@@ -109,9 +109,7 @@ impl Process {
     }
 
     pub fn get_cap(&self, cap_id: usize) -> Result<Capability, &'static str> {
-        let cap = self.caps
-            .get(&cap_id)
-            .ok_or("error: no cap at this id")?;
+        let cap = self.caps.get(&cap_id).ok_or("error: no cap at this id")?;
         if cap.is_none() {
             Err("error: cap has been moved/revoked")
         } else {

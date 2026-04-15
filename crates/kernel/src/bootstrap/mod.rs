@@ -117,12 +117,7 @@ pub fn run() {
     Process::get_mut(bs).dump_caps();
     Process::get_mut(KERNEL_TASK_ID).dump_caps();
 
-    send(
-        KERNEL_TASK_ID,
-        ep_id,
-        "sendsend hello".into()
-    )
-    .expect("could not send");
+    send(KERNEL_TASK_ID, ep_id, "sendsend hello".into()).expect("could not send");
 
     let done = syscall::switch(bs);
 
