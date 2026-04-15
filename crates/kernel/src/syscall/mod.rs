@@ -1,11 +1,12 @@
 use alloc::vec;
 use core::fmt::Write;
 use hal::halt;
+use syscall::Message;
 
 use crate::{
     RING_BUFFER,
     capability::recv,
-    ipc::{EndpointId, Message},
+    ipc::EndpointId,
     log,
     process::{CURRENT_PROCESS_ID, KERNEL_TASK_ID, PROCESS_TABLE, Process, switch_process},
 };

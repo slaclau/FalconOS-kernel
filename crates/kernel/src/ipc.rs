@@ -1,8 +1,7 @@
-use core::{fmt::Write, sync::atomic::AtomicUsize};
+use core::sync::atomic::AtomicUsize;
 
 use alloc::collections::btree_map::BTreeMap;
-
-use crate::{RING_BUFFER, log};
+use syscall::Message;
 
 pub static mut ENDPOINTS: BTreeMap<EndpointId, Endpoint> = BTreeMap::new();
 
@@ -44,32 +43,5 @@ impl Endpoint {
             self.occupied = false;
             Ok(self.data.clone())
         }
-    }
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct Message {
-    pub data: [usize; 4],
-}
-
-impl From<&str> for Message {
-    fn from(value: &str) -> Self {
-        let bytes = value.as_bytes();
-        let chunks = bytes.chunks(8);
-
-        let mut words = chunks.map(|chunk| {
-            let mut buf = [0u8; size_of::<usize>()];
-            buf[0..chunk.len()].copy_from_slice(chunk);
-            usize::from_be_bytes(buf)
-        });
-
-        let mut data = [0usize; 4];
-        let b_data = &mut data;
-
-        for word in b_data {
-            *word = words.next().unwrap_or(0);
-        }
-        log!(RING_BUFFER, "got {data:?}");
-        Self { data }
     }
 }

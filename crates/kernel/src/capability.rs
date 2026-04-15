@@ -4,9 +4,11 @@ use core::{
     ops::BitAnd,
 };
 
+use syscall::Message;
+
 use crate::{
     PhysicalAddress,
-    ipc::{ENDPOINTS, Endpoint, EndpointId, Message},
+    ipc::{ENDPOINTS, Endpoint, EndpointId},
     process::{KERNEL_TASK_ID, PROCESS_TABLE, Process, ProcessId},
 };
 

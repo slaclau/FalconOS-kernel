@@ -3,7 +3,7 @@ use core::{arch::asm, fmt::Write, sync::atomic::AtomicUsize};
 use hal::{self};
 use macros::{assign_handlers, make_handlers};
 use spin::{Mutex, Once};
-use syscall::{SYS_EXIT, SYS_GET_PID, SYS_LOG, SYS_RECV, SYS_SPAWN, SYS_SWITCH, SYS_WAIT};
+use syscall::{Message, SYS_EXIT, SYS_GET_PID, SYS_LOG, SYS_RECV, SYS_SPAWN, SYS_SWITCH, SYS_WAIT};
 
 use crate::{
     DEBUG_WRITER, RING_BUFFER,
@@ -15,7 +15,6 @@ use crate::{
             idt::{self, PageFaultErrorCode},
         },
     },
-    ipc::Message,
     log,
     syscall::{
         handle_sys_exit, handle_sys_get_pid, handle_sys_log, handle_sys_recv, handle_sys_spawn,
