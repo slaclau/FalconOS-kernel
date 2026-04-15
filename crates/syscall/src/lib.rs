@@ -42,18 +42,14 @@ pub fn log(message: &str) -> usize {
 }
 
 pub fn recv(ep_id: usize) -> (usize, Message) {
-    let mut msg = Message::default();
-    let res = unsafe {
-        syscall5(
-            SYS_RECV,
-            ep_id,
-            &mut msg.data[0] as *mut _ as usize,
-            &mut msg.data[1] as *mut _ as usize,
-            &mut msg.data[2] as *mut _ as usize,
-            &mut msg.data[3] as *mut _ as usize,
-        )
-    };
-    (res, msg)
+    let (res, words) = unsafe { out_syscall5(SYS_RECV, ep_id, 0, 0, 0, 0) };
+
+    (
+        res,
+        Message {
+            data: *words[1..5].as_array().unwrap(),
+        },
+    )
 }
 
 #[derive(Clone, Debug, Default)]
@@ -79,5 +75,11 @@ impl From<&str> for Message {
             *word = words.next().unwrap_or(0);
         }
         Self { data }
+    }
+}
+
+impl From<[usize; 4]> for Message {
+    fn from(value: [usize; 4]) -> Self {
+        Self { data: value }
     }
 }

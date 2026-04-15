@@ -3,7 +3,9 @@ use core::{arch::asm, fmt::Write, sync::atomic::AtomicUsize};
 use hal::{self};
 use macros::{assign_handlers, make_handlers};
 use spin::{Mutex, Once};
-use syscall::{Message, SYS_EXIT, SYS_GET_PID, SYS_LOG, SYS_RECV, SYS_SPAWN, SYS_SWITCH, SYS_WAIT};
+use syscall::{
+    SYS_EXIT, SYS_GET_PID, SYS_LOG, SYS_RECV, SYS_SEND, SYS_SPAWN, SYS_SWITCH, SYS_WAIT,
+};
 
 use crate::{
     DEBUG_WRITER, RING_BUFFER,
@@ -17,8 +19,8 @@ use crate::{
     },
     log,
     syscall::{
-        handle_sys_exit, handle_sys_get_pid, handle_sys_log, handle_sys_recv, handle_sys_spawn,
-        handle_sys_switch, handle_sys_wait,
+        handle_sys_exit, handle_sys_get_pid, handle_sys_log, handle_sys_recv, handle_sys_send,
+        handle_sys_spawn, handle_sys_switch, handle_sys_wait,
     },
 };
 
@@ -253,10 +255,20 @@ pub extern "C" fn syscall_handler(frame: &mut SyscallFrame) {
         SYS_EXIT => handle_sys_exit(frame.rdi),
         SYS_WAIT => handle_sys_wait(frame.rdi),
         SYS_LOG => handle_sys_log(frame.rdi, frame.rsi),
-        SYS_RECV => handle_sys_recv(frame.rdi, unsafe { &mut *(frame.rsi as *mut Message) }),
+        SYS_SEND => handle_sys_send(
+            frame.rdi,
+            [frame.rsi, frame.rdx, frame.r10, frame.r8].into(),
+        ),
+        SYS_RECV => {
+            let (res, msg) = handle_sys_recv(frame.rdi);
+            frame.rsi = msg.data[0];
+            frame.rdx = msg.data[1];
+            frame.r10 = msg.data[2];
+            frame.r8 = msg.data[3];
+            res
+        }
         _ => unimplemented!("unhandled syscall {}", frame.rax),
     };
-
     frame.rax = ret;
 }
 

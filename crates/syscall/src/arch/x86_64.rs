@@ -44,3 +44,25 @@ syscall! {
   syscall5(a, b, c, d, e, f,);
   syscall6(a, b, c, d, e, f, g,);
 }
+
+pub unsafe fn out_syscall5(
+    mut a: usize,
+    mut b: usize,
+    mut c: usize,
+    mut d: usize,
+    mut e: usize,
+    mut f: usize,
+) -> (usize, [usize; 5]) {
+    unsafe {
+        core::arch::asm!(
+          "int 0x80",
+          inlateout("rax") a,
+          inlateout("rdi") b,
+          inlateout("rsi") c,
+          inlateout("rdx") d,
+          inlateout("r10") e,
+          inlateout("r8") f,
+        );
+    }
+    (a, [b, c, d, e, f])
+}

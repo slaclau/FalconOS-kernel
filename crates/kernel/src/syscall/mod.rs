@@ -5,7 +5,7 @@ use syscall::Message;
 
 use crate::{
     RING_BUFFER,
-    capability::recv,
+    capability::{recv, send},
     ipc::EndpointId,
     log,
     process::{CURRENT_PROCESS_ID, KERNEL_TASK_ID, PROCESS_TABLE, Process, switch_process},
@@ -60,15 +60,23 @@ pub fn handle_sys_log(start: usize, length: usize) -> usize {
     0
 }
 
-pub fn handle_sys_recv(ep_id: EndpointId, message: &mut Message) -> usize {
+pub fn handle_sys_send(ep_id: EndpointId, message: Message) -> usize {
+    let res = send(
+        CURRENT_PROCESS_ID.load(core::sync::atomic::Ordering::Relaxed),
+        ep_id,
+        message,
+    );
+    if res.is_ok() { 0 } else { usize::MAX }
+}
+
+pub fn handle_sys_recv(ep_id: EndpointId) -> (usize, Message) {
     let res = recv(
         CURRENT_PROCESS_ID.load(core::sync::atomic::Ordering::Relaxed),
         ep_id,
     );
     if let Ok(msg) = res {
-        message.clone_from(&msg);
-        0
+        (0, msg)
     } else {
-        usize::MAX
+        (usize::MAX, Message::default())
     }
 }
