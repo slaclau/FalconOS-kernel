@@ -31,7 +31,7 @@ impl Endpoint {
         if self.occupied {
             Err(IpcError::Full)
         } else {
-            self.data = message.clone();
+            self.data = message;
             self.occupied = true;
             Ok(())
         }
@@ -41,7 +41,7 @@ impl Endpoint {
             Err(IpcError::Full)
         } else {
             self.occupied = false;
-            Ok(self.data.clone())
+            Ok(self.data)
         }
     }
 }

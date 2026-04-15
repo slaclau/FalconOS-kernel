@@ -23,9 +23,11 @@ pub extern "C" fn _start() -> ! {
 
     loop {
         syscall::log("send message to echo");
-        syscall::send(send_ep_id, "send to echo".into()).expect("could not send");
+        let msg = "send to echo".into();
+        syscall::send(send_ep_id,msg).expect("could not send");
         syscall::switch(echo_proc_id);
-        syscall::recv(send_ep_id).expect("could not receive");
+        let resp = syscall::recv(send_ep_id).expect("could not receive");
+        assert_eq!(msg, resp);
         syscall::log("received message from echo");
     }
 }

@@ -148,7 +148,7 @@ pub fn recv(ep_id: usize) -> Result<Message, IpcError> {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Message {
     pub data: [usize; 4],
 }
