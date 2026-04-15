@@ -54,12 +54,12 @@ pub fn handle_sys_log(start: usize, length: usize) -> usize {
     let message = str::from_utf8(bytes).expect("invalid message");
     log!(
         RING_BUFFER,
-        "from process {CURRENT_PROCESS_ID:?}: {message}"
+        "from process {CURRENT_PROCESS_ID:?}: {message} ({start:#x}/{length})"
     );
     0
 }
 
-pub fn handle_sys_recv(ep_id: EndpointId, mut message: &mut Message) -> usize {
+pub fn handle_sys_recv(ep_id: EndpointId, message: &mut Message) -> usize {
     let res = recv(
         CURRENT_PROCESS_ID.load(core::sync::atomic::Ordering::Relaxed),
         ep_id,

@@ -10,6 +10,7 @@ use crate::{
     process::{KERNEL_TASK_ID, PROCESS_TABLE, Process, ProcessId},
 };
 
+#[allow(unused)]
 #[derive(Clone, Debug)]
 pub enum KernelObject {
     Untyped { addr: PhysicalAddress, size: usize },

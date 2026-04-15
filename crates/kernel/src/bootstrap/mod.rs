@@ -3,7 +3,6 @@ use core::fmt::{Debug, Write};
 use crate::{
     PhysicalAddress,
     capability::{self, Rights, create_endpoint, derive_cap, move_cap, send},
-    ipc::Message,
     process::{KERNEL_TASK_ID, Process},
 };
 use elf::{Elf, SegmentType};
@@ -118,15 +117,10 @@ pub fn run() {
     Process::get_mut(bs).dump_caps();
     Process::get_mut(KERNEL_TASK_ID).dump_caps();
 
-    let bytes = "sendsend".as_bytes();
-    let data = usize::from_be_bytes(*bytes.as_array().unwrap());
-
     send(
         KERNEL_TASK_ID,
         ep_id,
-        Message {
-            data,
-        },
+        "sendsend hello".into()
     )
     .expect("could not send");
 

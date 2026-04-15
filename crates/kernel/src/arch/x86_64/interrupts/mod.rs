@@ -247,7 +247,6 @@ pub struct SyscallFrame {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn syscall_handler(frame: &mut SyscallFrame) {
-    log!(RING_BUFFER, "handle syscall {frame:?}");
     let ret = match frame.rax {
         SYS_SWITCH => handle_sys_switch(frame.rdi),
         SYS_GET_PID => handle_sys_get_pid(),
