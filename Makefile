@@ -2,9 +2,11 @@ arch ?= x86_64
 kernel := build/kernel-$(arch).bin
 iso := build/FalconOS-$(arch).iso
 target ?= $(arch)-unknown-none
-rust_os := target/$(target)/debug/libkernel.a
 
-rust_bootstrap := target/$(target)/debug/bootstrap
+rust_build_dir := target/$(target)/debug
+rust_os := $(rust_build_dir)/libkernel.a
+rust_bootstrap := $(rust_build_dir)/bootstrap
+
 bootstrap_tar := build/bootstrap.tar
 
 linker_script := crates/kernel/src/arch/$(arch)/loader/linker.ld
@@ -55,5 +57,6 @@ build/arch/$(arch)/%.o: crates/kernel/src/arch/$(arch)/loader/%.asm
 $(bootstrap_tar): rust_code
 	@mkdir -p build/tarfiles/bootstrap
 	@cp $(rust_bootstrap) build/tarfiles/bootstrap/main
+
 	@tar -c -f $(bootstrap_tar) -C build/tarfiles .
 	@rm -r build/tarfiles

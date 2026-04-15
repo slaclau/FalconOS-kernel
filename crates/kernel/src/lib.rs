@@ -2,8 +2,6 @@
 #![feature(abi_x86_interrupt)]
 #![feature(debug_closure_helpers)]
 #![feature(ptr_metadata)]
-#![feature(const_ops)]
-#![feature(const_trait_impl)]
 #![allow(static_mut_refs)]
 
 use core::{fmt::Write, ptr::from_raw_parts, slice};

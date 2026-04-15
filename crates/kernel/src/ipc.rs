@@ -1,7 +1,7 @@
 use core::sync::atomic::AtomicUsize;
 
 use alloc::collections::btree_map::BTreeMap;
-use syscall::Message;
+use syscall::{IpcError, Message};
 
 pub static mut ENDPOINTS: BTreeMap<EndpointId, Endpoint> = BTreeMap::new();
 
@@ -27,18 +27,18 @@ impl Endpoint {
         unsafe { ENDPOINTS.insert(ep_id, ep) };
         ep_id
     }
-    pub fn write(&mut self, message: Message) -> Result<(), &'static str> {
+    pub fn write(&mut self, message: Message) -> Result<(), IpcError> {
         if self.occupied {
-            Err("endpoint occupied")
+            Err(IpcError::Full)
         } else {
             self.data = message.clone();
             self.occupied = true;
             Ok(())
         }
     }
-    pub fn read(&mut self) -> Result<Message, &'static str> {
+    pub fn read(&mut self) -> Result<Message, IpcError> {
         if !self.occupied {
-            Err("endpoint empty")
+            Err(IpcError::Full)
         } else {
             self.occupied = false;
             Ok(self.data.clone())

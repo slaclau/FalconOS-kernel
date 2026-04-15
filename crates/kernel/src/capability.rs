@@ -1,10 +1,9 @@
 use core::{
     cmp::{max, min},
     fmt::Debug,
-    ops::BitAnd,
 };
 
-use syscall::Message;
+use syscall::{IpcError, Message, Rights};
 
 use crate::{
     PhysicalAddress,
@@ -19,52 +18,6 @@ pub enum KernelObject {
     Process(ProcessId),
     Endpoint(EndpointId),
     Frame { addr: PhysicalAddress, size: usize },
-}
-
-#[derive(Clone, Copy)]
-pub struct Rights(u8);
-
-impl Rights {
-    pub const ALL: Rights = Rights(u8::MAX);
-    pub const READ: Rights = Rights(0x1);
-    pub const WRITE: Rights = Rights(0x2);
-    pub const EXEC: Rights = Rights(0x4);
-    pub const GRANT: Rights = Rights(0x8);
-    pub const RWE: Rights = Rights::READ & Rights::WRITE & Rights::EXEC;
-
-    pub fn read(self) -> bool {
-        (self & Self::READ).0 > 0
-    }
-
-    pub fn write(self) -> bool {
-        (self & Self::WRITE).0 > 0
-    }
-
-    pub fn exec(self) -> bool {
-        (self & Self::EXEC).0 > 0
-    }
-
-    pub fn grant(self) -> bool {
-        (self & Self::GRANT).0 > 0
-    }
-}
-
-impl Debug for Rights {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("Rights")
-            .field("R", &self.read())
-            .field("W", &self.write())
-            .field("X", &self.exec())
-            .field("G", &self.grant())
-            .finish()
-    }
-}
-
-impl const BitAnd for Rights {
-    type Output = Self;
-    fn bitand(self, rhs: Self) -> Self::Output {
-        Self(self.0 & rhs.0)
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -84,7 +37,7 @@ impl Capability {
         })
     }
     pub fn has_rights(self, rights: Rights) -> Result<(), &'static str> {
-        if (self.rights & rights).0 > 0 {
+        if self.rights.matches(rights) {
             Ok(())
         } else {
             Err("invalid rights")
@@ -162,33 +115,31 @@ fn get_endpoint(endpoint_id: EndpointId) -> Result<&'static mut Endpoint, &'stat
     }
 }
 
-pub fn send(pid: ProcessId, cap_id: usize, message: Message) -> Result<(), &'static str> {
+pub fn send(pid: ProcessId, cap_id: usize, message: Message) -> Result<(), IpcError> {
     let proc = Process::get_mut(pid);
-    let cap = proc.get_cap(cap_id)?;
+    let cap = proc.get_cap(cap_id).or(Err(IpcError::InvalidEndpoint))?;
 
     match cap.object {
         KernelObject::Endpoint(endpoint_id) => {
-            let res = cap.has_rights(Rights::WRITE);
-            if res.is_ok() {
-                let ep = get_endpoint(endpoint_id).unwrap();
-                ep.write(message)
-            } else {
-                res
-            }
+            cap.has_rights(Rights::WRITE)
+                .or(Err(IpcError::WrongRights))?;
+            let ep = get_endpoint(endpoint_id).unwrap();
+            ep.write(message)
         }
-        _ => Err("error: not an endpoint"),
+        _ => Err(IpcError::InvalidEndpoint),
     }
 }
 
-pub fn recv(pid: ProcessId, cap_id: usize) -> Result<Message, &'static str> {
+pub fn recv(pid: ProcessId, cap_id: usize) -> Result<Message, IpcError> {
     let proc = Process::get_mut(pid);
-    let cap = proc.get_cap(cap_id)?;
+    let cap = proc.get_cap(cap_id).or(Err(IpcError::InvalidEndpoint))?;
 
     match cap.object {
         KernelObject::Endpoint(endpoint_id) => {
-            let res = cap.has_rights(Rights::READ);
-            res.and(get_endpoint(endpoint_id).unwrap().read())
+            cap.has_rights(Rights::READ)
+                .or(Err(IpcError::WrongRights))?;
+            get_endpoint(endpoint_id).unwrap().read()
         }
-        _ => Err("error: not an endpoint"),
+        _ => Err(IpcError::InvalidEndpoint),
     }
 }

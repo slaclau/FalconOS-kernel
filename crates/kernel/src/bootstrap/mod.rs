@@ -1,10 +1,6 @@
 use core::fmt::{Debug, Write};
 
-use crate::{
-    PhysicalAddress,
-    capability::{self, Rights, create_endpoint, derive_cap, move_cap, send},
-    process::{KERNEL_TASK_ID, Process},
-};
+use crate::{PhysicalAddress, capability};
 use elf::{Elf, SegmentType};
 use tar::Archive;
 
@@ -100,29 +96,6 @@ pub fn run() {
         },
         0,
     );
-
-    let ep_id = create_endpoint(KERNEL_TASK_ID).unwrap();
-    log!(
-        RING_BUFFER,
-        "created endpoint {ep_id} for proc {KERNEL_TASK_ID}"
-    );
-
-    let recv_ep_id = derive_cap(KERNEL_TASK_ID, ep_id, Rights::READ).unwrap();
-    log!(
-        RING_BUFFER,
-        "created endpoint {recv_ep_id} for proc {KERNEL_TASK_ID}"
-    );
-
-    move_cap(KERNEL_TASK_ID, recv_ep_id, bs).unwrap();
-    Process::get_mut(bs).dump_caps();
-    Process::get_mut(KERNEL_TASK_ID).dump_caps();
-
-    send(KERNEL_TASK_ID, ep_id, "sendsend hello".into()).expect("could not send");
-
-    let done = syscall::switch(bs);
-
-    log!(RING_BUFFER, "back to kernel control from {done}");
-
-    let exit_code = syscall::wait(bs);
-    log!(RING_BUFFER, "bs exited with {exit_code}");
+    log!(RING_BUFFER, "switch to boostrap process");
+    syscall::switch(bs);
 }

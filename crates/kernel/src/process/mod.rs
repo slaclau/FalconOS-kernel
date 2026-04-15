@@ -6,11 +6,7 @@ use core::{
 use alloc::{collections::btree_map::BTreeMap, vec::Vec};
 pub use syscall::ProcessId;
 
-use crate::{
-    RING_BUFFER,
-    capability::{self, Capability},
-    log,
-};
+use crate::{RING_BUFFER, capability::Capability, log};
 
 pub const KERNEL_TASK_ID: ProcessId = 0;
 
@@ -122,6 +118,7 @@ impl Process {
         Ok(cap.unwrap())
     }
 
+    #[allow(unused)]
     pub fn dump_caps(&self) {
         log!(RING_BUFFER, "{self:?}");
         for cap in &self.caps {
@@ -132,7 +129,7 @@ impl Process {
     pub fn derive_cap(
         &mut self,
         cap_id: usize,
-        mask: capability::Rights,
+        mask: syscall::Rights,
     ) -> Result<usize, &'static str> {
         let cap = self.get_cap(cap_id)?;
         let new_cap = cap.derive(mask)?;
