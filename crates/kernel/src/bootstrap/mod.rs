@@ -1,6 +1,9 @@
 use core::fmt::{Debug, Write};
 
-use crate::{PhysicalAddress, capability};
+use crate::{
+    PhysicalAddress, capability,
+    process::{PROCESS_TABLE, switch_process},
+};
 use elf::{Elf, SegmentType};
 use tar::Archive;
 
@@ -97,5 +100,15 @@ pub fn run() {
         0,
     );
     log!(RING_BUFFER, "switch to boostrap process");
-    bs.switch();
+    let prev = bs.switch();
+    log!(RING_BUFFER, "returned to kernel from prev {prev:?}");
+    loop {
+        for (pid, proc) in unsafe { PROCESS_TABLE.as_ref().unwrap().iter() } {
+            if proc.blocker.is_none() {
+                log!(RING_BUFFER, "found {pid} can run");
+                switch_process(*pid);
+            }
+        }
+        log!(RING_BUFFER, "idle");
+    }
 }

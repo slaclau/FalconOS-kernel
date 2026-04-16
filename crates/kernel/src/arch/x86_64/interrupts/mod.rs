@@ -20,9 +20,8 @@ use crate::{
     },
     log,
     syscall::{
-        handle_sys_create_endpoint, handle_sys_derive_cap, handle_sys_exit, handle_sys_get_pid,
-        handle_sys_log, handle_sys_move_cap, handle_sys_recv, handle_sys_send, handle_sys_spawn,
-        handle_sys_switch, handle_sys_wait,
+        handle_sys_derive_cap, handle_sys_exit, handle_sys_get_pid, handle_sys_log,
+        handle_sys_move_cap, handle_sys_spawn, handle_sys_switch, handle_sys_wait,
     },
 };
 
@@ -257,19 +256,19 @@ pub extern "C" fn syscall_handler(frame: &mut SyscallFrame) {
         SYS_EXIT => handle_sys_exit(frame.rdi),
         SYS_WAIT => handle_sys_wait(frame.rdi),
         SYS_LOG => handle_sys_log(frame.rdi, frame.rsi),
-        SYS_CREATE_ENDPOINT => handle_sys_create_endpoint(),
-        SYS_SEND => handle_sys_send(
-            frame.rdi,
-            [frame.rsi, frame.rdx, frame.r10, frame.r8].into(),
-        ),
-        SYS_RECV => {
-            let (res, msg) = handle_sys_recv(frame.rdi);
-            frame.rsi = msg.data[0];
-            frame.rdx = msg.data[1];
-            frame.r10 = msg.data[2];
-            frame.r8 = msg.data[3];
-            res
-        }
+        // SYS_CREATE_ENDPOINT => handle_sys_create_endpoint(),
+        // SYS_SEND => handle_sys_send(
+        //     frame.rdi,
+        //     [frame.rsi, frame.rdx, frame.r10, frame.r8].into(),
+        // ),
+        // SYS_RECV => {
+        //     let (res, msg) = handle_sys_recv(frame.rdi);
+        //     frame.rsi = msg.data[0];
+        //     frame.rdx = msg.data[1];
+        //     frame.r10 = msg.data[2];
+        //     frame.r8 = msg.data[3];
+        //     res
+        // }
         SYS_DERIVE_CAP => handle_sys_derive_cap(frame.rdi, frame.rsi.into()),
         SYS_MOVE_CAP => handle_sys_move_cap(frame.rdi, frame.rsi),
         _ => unimplemented!("unhandled syscall {}", frame.rax),

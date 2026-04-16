@@ -35,6 +35,7 @@ pub struct Process {
     stack: Vec<u8>,
     pub exit_code: Option<usize>,
     next_cap: usize,
+    pub blocker: Option<usize>,
     caps: BTreeMap<usize, Option<Capability>>,
 }
 
@@ -75,6 +76,7 @@ impl Process {
             },
             exit_code: None,
             next_cap: 0,
+            blocker: None,
             caps: BTreeMap::new(),
         }
     }
@@ -105,6 +107,7 @@ impl Process {
     }
 
     pub fn get_cap(&self, cap_id: usize) -> Result<Capability, &'static str> {
+        log!(RING_BUFFER, "get cap {cap_id}");
         let cap = self.caps.get(&cap_id).ok_or("error: no cap at this id")?;
         if cap.is_none() {
             Err("error: cap has been moved/revoked")
@@ -114,6 +117,7 @@ impl Process {
     }
 
     pub fn remove_cap(&mut self, cap_id: usize) -> Result<Capability, &'static str> {
+        log!(RING_BUFFER, "remove cap {cap_id}");
         let cap = self.caps.insert(cap_id, None).unwrap();
         Ok(cap.unwrap())
     }
@@ -139,12 +143,23 @@ impl Process {
     pub fn move_cap(
         &mut self,
         cap_id: usize,
-        target_pid: ProcessId,
+        target_process_cap_id: usize,
     ) -> Result<usize, &'static str> {
+        log!(
+            RING_BUFFER,
+            "move cap {cap_id} to proc cap {target_process_cap_id}"
+        );
         let cap = self.remove_cap(cap_id)?;
+        let proc_cap = self.get_cap(target_process_cap_id)?;
         log!(RING_BUFFER, "cap is {cap:?}");
-        let proc = Self::get_mut(target_pid);
-        proc.insert_cap(cap)
+        log!(RING_BUFFER, "proc cap is {proc_cap:?}");
+        match proc_cap.object {
+            crate::capability::KernelObject::Process(pid) => {
+                let proc = Self::get_mut(pid);
+                proc.insert_cap(cap)
+            }
+            _ => panic!("not proc"),
+        }
     }
 
     pub fn get_mut(pid: ProcessId) -> &'static mut Self {

@@ -3,14 +3,12 @@ use core::fmt::Write;
 use hal::halt;
 use syscall::{
     cap::{CapHandle, Rights},
-    ipc::Message,
     process::ProcessId,
 };
 
 use crate::{
     RING_BUFFER,
-    capability::{Capability, KernelObject, create_endpoint, derive_cap, move_cap, recv, send},
-    ipc::EndpointId,
+    capability::{Capability, KernelObject, derive_cap, move_cap},
     log,
     process::{CURRENT_PROCESS_ID, KERNEL_TASK_ID, PROCESS_TABLE, Process, switch_process},
 };
@@ -83,35 +81,6 @@ pub fn handle_sys_log(start: usize, length: usize) -> usize {
     0
 }
 
-pub fn handle_sys_create_endpoint() -> usize {
-    create_endpoint(CURRENT_PROCESS_ID.load(core::sync::atomic::Ordering::Relaxed)).unwrap()
-}
-
-pub fn handle_sys_send(ep_id: EndpointId, message: Message) -> usize {
-    let res = send(
-        CURRENT_PROCESS_ID.load(core::sync::atomic::Ordering::Relaxed),
-        ep_id,
-        message,
-    );
-    if res.is_ok() {
-        0
-    } else {
-        res.err().unwrap() as usize
-    }
-}
-
-pub fn handle_sys_recv(ep_id: EndpointId) -> (EndpointId, Message) {
-    let res = recv(
-        CURRENT_PROCESS_ID.load(core::sync::atomic::Ordering::Relaxed),
-        ep_id,
-    );
-    if let Ok(msg) = res {
-        (0, msg)
-    } else {
-        (res.err().unwrap() as usize, Message::default())
-    }
-}
-
 pub fn handle_sys_derive_cap(cap_id: usize, mask: Rights) -> usize {
     derive_cap(
         CURRENT_PROCESS_ID.load(core::sync::atomic::Ordering::Relaxed),
@@ -121,11 +90,15 @@ pub fn handle_sys_derive_cap(cap_id: usize, mask: Rights) -> usize {
     .unwrap()
 }
 
-pub fn handle_sys_move_cap(process_id: ProcessId, cap_id: usize) -> usize {
+pub fn handle_sys_move_cap(process_cap_id: usize, cap_id: usize) -> usize {
+    log!(
+        RING_BUFFER,
+        "move cap {cap_id} to proc cap {process_cap_id}"
+    );
     move_cap(
         CURRENT_PROCESS_ID.load(core::sync::atomic::Ordering::Relaxed),
         cap_id,
-        process_id,
+        process_cap_id,
     )
     .unwrap()
 }

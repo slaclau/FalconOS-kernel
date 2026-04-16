@@ -7,26 +7,35 @@ use crate::{
 
 #[derive(Clone, Copy)]
 pub struct Endpoint;
+pub struct ReplyEndpoint;
 impl CapType for Endpoint {}
+impl CapType for ReplyEndpoint {}
 
 impl Cap<Endpoint> {
-    pub fn send(self, message: Message) -> Result<(), IpcError> {
+    pub fn create() -> Result<Cap<Endpoint>, &'static str> {
+        let res = unsafe { syscall0(SYS_CREATE_ENDPOINT) };
+        Ok(Cap::<Endpoint>::new(res))
+    }
+
+    pub fn send(self, message: Message) -> Result<Message, IpcError> {
         send(self.handle, message)
     }
 
-    pub fn recv(self) -> Result<Message, IpcError> {
-        recv(self.handle)
+    pub fn recv(self) -> Result<(Cap<ReplyEndpoint>, Message), IpcError> {
+        let (handle, msg) = recv(self.handle)?;
+        Ok((Cap::new(handle), msg))
     }
 }
 
-pub fn create_endpoint() -> Result<Cap<Endpoint>, &'static str> {
-    let res = unsafe { syscall0(SYS_CREATE_ENDPOINT) };
-    Ok(Cap::<Endpoint>::new(res))
+impl Cap<ReplyEndpoint> {
+    pub fn reply(self, message: Message) -> Result<(), IpcError> {
+        reply(self.handle, message)
+    }
 }
 
-fn send(ep_id: CapHandle, message: Message) -> Result<(), IpcError> {
-    let code = unsafe {
-        syscall5(
+fn send(ep_id: CapHandle, mut message: Message) -> Result<Message, IpcError> {
+    let (code, words) = unsafe {
+        out_syscall5(
             SYS_SEND,
             ep_id,
             message.data[0],
@@ -35,19 +44,42 @@ fn send(ep_id: CapHandle, message: Message) -> Result<(), IpcError> {
             message.data[3],
         )
     };
-    if code == 0 { Ok(()) } else { Err(code.into()) }
+    message.data = *words[1..5].as_array().expect("Not able to unwrap");
+    if code == 0 {
+        Ok(message)
+    } else {
+        Err(code.into())
+    }
 }
 
-fn recv(ep_id: CapHandle) -> Result<Message, IpcError> {
-    let (res, words) = unsafe { out_syscall5(SYS_RECV, ep_id, 0, 0, 0, 0) };
+fn recv(ep_id: CapHandle) -> Result<(CapHandle, Message), IpcError> {
+    let (code, words) = unsafe { out_syscall5(SYS_RECV, ep_id, 0, 0, 0, 0) };
 
-    if res == 0 {
-        Ok(Message {
-            data: *words[1..5].as_array().unwrap(),
-        })
+    if code == 0 {
+        Ok((
+            code,
+            Message {
+                data: *words[1..5].as_array().unwrap(),
+            },
+        ))
     } else {
-        Err(res.into())
+        Err(code.into())
     }
+}
+
+fn reply(ep_id: CapHandle, message: Message) -> Result<(), IpcError> {
+    let code = unsafe {
+        syscall5(
+            SYS_RECV,
+            ep_id,
+            message.data[0],
+            message.data[1],
+            message.data[2],
+            message.data[3],
+        )
+    };
+
+    if code == 0 { Ok(()) } else { Err(code.into()) }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -99,14 +131,15 @@ impl From<[usize; 4]> for Message {
 pub enum IpcError {
     Ok = 0,
     WrongRights = 1,
-    Full = 2,
-    InvalidEndpoint = 3,
+    Empty = 2,
+    Full = 3,
+    InvalidEndpoint = 4,
     Unknown = usize::MAX,
 }
 
 impl From<usize> for IpcError {
     fn from(value: usize) -> Self {
-        if (0..=3).contains(&value) {
+        if (0..=4).contains(&value) {
             unsafe { mem::transmute::<usize, IpcError>(value) }
         } else {
             IpcError::Unknown

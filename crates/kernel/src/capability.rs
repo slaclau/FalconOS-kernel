@@ -1,16 +1,14 @@
 use core::{
     cmp::{max, min},
-    fmt::Debug,
+    fmt::{Debug, Write},
 };
 
-use syscall::{
-    cap::Rights,
-    ipc::{IpcError, Message},
-};
+use syscall::cap::Rights;
 
 use crate::{
-    PhysicalAddress,
-    ipc::{ENDPOINTS, Endpoint, EndpointId},
+    PhysicalAddress, RING_BUFFER,
+    ipc::EndpointId,
+    log,
     process::{KERNEL_TASK_ID, PROCESS_TABLE, Process, ProcessId},
 };
 
@@ -86,16 +84,6 @@ pub fn init(
     }
 }
 
-pub fn create_endpoint(pid: ProcessId) -> Result<usize, &'static str> {
-    let ep_id = Endpoint::create();
-    let proc = Process::get_mut(pid);
-    let cap = Capability {
-        object: KernelObject::Endpoint(ep_id),
-        rights: Rights::ALL,
-    };
-    proc.insert_cap(cap)
-}
-
 pub fn derive_cap(pid: ProcessId, cap_id: usize, mask: Rights) -> Result<usize, &'static str> {
     let proc = Process::get_mut(pid);
     proc.derive_cap(cap_id, mask)
@@ -104,45 +92,13 @@ pub fn derive_cap(pid: ProcessId, cap_id: usize, mask: Rights) -> Result<usize, 
 pub fn move_cap(
     source_pid: ProcessId,
     source_cap_id: usize,
-    target_pid: ProcessId,
+    target_process_cap_id: ProcessId,
 ) -> Result<usize, &'static str> {
     let proc = Process::get_mut(source_pid);
-    proc.move_cap(source_cap_id, target_pid)
-}
-
-fn get_endpoint(endpoint_id: EndpointId) -> Result<&'static mut Endpoint, &'static str> {
-    unsafe {
-        ENDPOINTS
-            .get_mut(&endpoint_id)
-            .ok_or("no endpoint with this id")
-    }
-}
-
-pub fn send(pid: ProcessId, cap_id: usize, message: Message) -> Result<(), IpcError> {
-    let proc = Process::get_mut(pid);
-    let cap = proc.get_cap(cap_id).or(Err(IpcError::InvalidEndpoint))?;
-
-    match cap.object {
-        KernelObject::Endpoint(endpoint_id) => {
-            cap.has_rights(Rights::WRITE)
-                .or(Err(IpcError::WrongRights))?;
-            let ep = get_endpoint(endpoint_id).unwrap();
-            ep.write(message)
-        }
-        _ => Err(IpcError::InvalidEndpoint),
-    }
-}
-
-pub fn recv(pid: ProcessId, cap_id: usize) -> Result<Message, IpcError> {
-    let proc = Process::get_mut(pid);
-    let cap = proc.get_cap(cap_id).or(Err(IpcError::InvalidEndpoint))?;
-
-    match cap.object {
-        KernelObject::Endpoint(endpoint_id) => {
-            cap.has_rights(Rights::READ)
-                .or(Err(IpcError::WrongRights))?;
-            get_endpoint(endpoint_id).unwrap().read()
-        }
-        _ => Err(IpcError::InvalidEndpoint),
-    }
+    log!(
+        RING_BUFFER,
+        "move cap {source_cap_id} to proc cap {target_process_cap_id}"
+    );
+    proc.dump_caps();
+    proc.move_cap(source_cap_id, target_process_cap_id)
 }
