@@ -4,7 +4,9 @@ use core::{
 };
 
 use alloc::{collections::btree_map::BTreeMap, vec::Vec};
+use hal::halt;
 pub use syscall::process::ProcessId;
+use syscall::{SyscallError, SyscallResult, cap::CapHandle};
 
 use crate::{RING_BUFFER, capability::Capability, log};
 
@@ -19,7 +21,8 @@ pub fn init_multiprocessing() {
     extern "C" fn kernel_task(_arg: usize) -> usize {
         0
     }
-    let k = syscall::cap::Cap::<syscall::process::Process>::spawn(kernel_task, 0);
+    let k = syscall::cap::Cap::<syscall::process::Process>::spawn(kernel_task, 0)
+        .expect("Could not spawn kernel task");
     assert_eq!(k.handle, KERNEL_TASK_ID);
     log!(
         RING_BUFFER,
@@ -30,13 +33,14 @@ pub fn init_multiprocessing() {
 #[repr(C)]
 #[derive(Clone)]
 pub struct Process {
-    id: ProcessId,
+    pub id: ProcessId,
     context: Context,
     stack: Vec<u8>,
-    pub exit_code: Option<usize>,
-    next_cap: usize,
-    pub blocker: Option<usize>,
-    caps: BTreeMap<usize, Option<Capability>>,
+    pub exit_code: Option<CapHandle>,
+    next_cap: CapHandle,
+    pub blocker: Option<CapHandle>,
+    caps: BTreeMap<CapHandle, Option<Capability>>,
+    previous: Option<ProcessId>,
 }
 
 impl Debug for Process {
@@ -52,9 +56,11 @@ impl Debug for Process {
 extern "C" fn process_entry_trampoline(entry: usize, arg: usize) -> ! {
     let func: fn(usize) -> usize = unsafe { core::mem::transmute(entry) };
 
-    let ret = func(arg);
+    func(arg);
 
-    syscall::process::exit(ret);
+    loop {
+        halt();
+    }
 }
 
 impl Process {
@@ -78,6 +84,7 @@ impl Process {
             next_cap: 0,
             blocker: None,
             caps: BTreeMap::new(),
+            previous: None,
         }
     }
 
@@ -95,31 +102,39 @@ impl Process {
         self.exit_code.is_some()
     }
 
+    #[allow(unused)]
     pub fn set_exit_code(&mut self, exit_code: usize) {
         self.exit_code = Some(exit_code)
     }
 
-    pub fn insert_cap(&mut self, cap: Capability) -> Result<usize, &'static str> {
+    pub fn r#yield(&self) -> SyscallResult<()> {
+        match self.previous {
+            Some(pid) => switch_process(pid),
+            None => Err(SyscallError::Unknown),
+        }
+    }
+
+    pub fn insert_cap(&mut self, cap: Capability) -> SyscallResult<CapHandle> {
         let key = self.next_cap;
         self.next_cap += 1;
         self.caps.insert(key, Some(cap));
         Ok(key)
     }
 
-    pub fn get_cap(&self, cap_id: usize) -> Result<Capability, &'static str> {
-        log!(RING_BUFFER, "get cap {cap_id}");
-        let cap = self.caps.get(&cap_id).ok_or("error: no cap at this id")?;
-        if cap.is_none() {
-            Err("error: cap has been moved/revoked")
-        } else {
-            Ok(cap.clone().unwrap())
+    pub fn get_cap(&self, cap_id: usize) -> SyscallResult<Capability> {
+        let cap = self.caps.get(&cap_id);
+        match cap {
+            Some(Some(cap)) => Ok(cap.clone()),
+            _ => Err(SyscallError::NoCap),
         }
     }
 
-    pub fn remove_cap(&mut self, cap_id: usize) -> Result<Capability, &'static str> {
-        log!(RING_BUFFER, "remove cap {cap_id}");
+    pub fn remove_cap(&mut self, cap_id: usize) -> SyscallResult<Capability> {
         let cap = self.caps.insert(cap_id, None).unwrap();
-        Ok(cap.unwrap())
+        match cap {
+            Some(cap) => Ok(cap),
+            None => Err(SyscallError::NoCap),
+        }
     }
 
     #[allow(unused)]
@@ -134,7 +149,7 @@ impl Process {
         &mut self,
         cap_id: usize,
         mask: syscall::cap::Rights,
-    ) -> Result<usize, &'static str> {
+    ) -> Result<CapHandle, SyscallError> {
         let cap = self.get_cap(cap_id)?;
         let new_cap = cap.derive(mask)?;
         self.insert_cap(new_cap)
@@ -142,28 +157,27 @@ impl Process {
 
     pub fn move_cap(
         &mut self,
-        cap_id: usize,
-        target_process_cap_id: usize,
-    ) -> Result<usize, &'static str> {
-        log!(
-            RING_BUFFER,
-            "move cap {cap_id} to proc cap {target_process_cap_id}"
-        );
+        cap_id: CapHandle,
+        target_process_cap_id: CapHandle,
+    ) -> Result<CapHandle, SyscallError> {
         let cap = self.remove_cap(cap_id)?;
         let proc_cap = self.get_cap(target_process_cap_id)?;
-        log!(RING_BUFFER, "cap is {cap:?}");
-        log!(RING_BUFFER, "proc cap is {proc_cap:?}");
         match proc_cap.object {
             crate::capability::KernelObject::Process(pid) => {
                 let proc = Self::get_mut(pid);
                 proc.insert_cap(cap)
             }
-            _ => panic!("not proc"),
+            _ => Err(SyscallError::InvalidObject),
         }
     }
 
     pub fn get_mut(pid: ProcessId) -> &'static mut Self {
         unsafe { PROCESS_TABLE.as_mut().unwrap().get_mut(&pid).unwrap() }
+    }
+
+    pub fn get_current_mut() -> &'static mut Self {
+        let current_pid = CURRENT_PROCESS_ID.load(core::sync::atomic::Ordering::Relaxed);
+        Self::get_mut(current_pid)
     }
 }
 #[derive(Debug, Default, Clone, Copy)]
@@ -185,8 +199,10 @@ pub struct Context {
     pub initial_rsi: usize,
 }
 
-pub unsafe fn switch(old: &mut Process, new: &Process) {
+pub unsafe fn switch(old: &mut Process, new: &mut Process) -> SyscallResult<()> {
+    new.previous = Some(old.id);
     unsafe { context_switch(&mut old.context, &new.context) };
+    Ok(())
 }
 
 #[unsafe(naked)]
@@ -247,19 +263,11 @@ pub unsafe extern "C" fn context_switch(_old: *mut Context, _new: *const Context
     )
 }
 
-pub fn switch_process(next_id: ProcessId) -> usize {
+pub fn switch_process(next_id: ProcessId) -> SyscallResult<()> {
     unsafe {
-        let table = PROCESS_TABLE.as_mut().unwrap();
-        let current_id = CURRENT_PROCESS_ID.swap(next_id, core::sync::atomic::Ordering::Relaxed);
-
-        let current: &mut Process = table.get_mut(&current_id).expect("No current process");
-
-        let next: &Process = PROCESS_TABLE
-            .as_mut()
-            .unwrap()
-            .get(&next_id)
-            .expect("Invalid next process");
-        switch(current, next);
-        current_id
+        let current: &mut Process = Process::get_current_mut();
+        CURRENT_PROCESS_ID.swap(next_id, core::sync::atomic::Ordering::Relaxed);
+        let next: &mut Process = Process::get_current_mut();
+        switch(current, next)
     }
 }

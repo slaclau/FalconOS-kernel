@@ -3,6 +3,7 @@
 #![feature(debug_closure_helpers)]
 #![feature(ptr_metadata)]
 #![allow(static_mut_refs)]
+#![feature(generic_atomic)]
 
 use core::{fmt::Write, ptr::from_raw_parts, slice};
 

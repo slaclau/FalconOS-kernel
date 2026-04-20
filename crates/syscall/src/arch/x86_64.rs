@@ -1,25 +1,28 @@
 #![allow(unused)]
 
+use crate::{SyscallError, SyscallOut};
+
 macro_rules! syscall {
   ($($name:ident($a:ident, $($b:ident, $($c:ident, $($d:ident, $($e:ident, $($f:ident, $($g:ident, )?)?)?)?)?)?);)+) => {
       $(
-          pub unsafe fn $name($a: usize, $(mut $b: usize, $(mut $c: usize, $(mut $d: usize, $(mut $e: usize, $(mut $f: usize, $(mut $g: usize)?)?)?)?)?)?) -> usize {
+          pub unsafe fn $name($a: usize, $(mut $b: usize, $(mut $c: usize, $(mut $d: usize, $(mut $e: usize, $(mut $f: usize, $(mut $g: usize)?)?)?)?)?)?) -> Result<[usize; 6], SyscallError> {
               let ret: usize;
+              let mut words: [usize; 6] = [0; 6];
               unsafe{core::arch::asm!(
                   "int 0x80",
                   in("rax") $a,
                   $(
-                      inlateout("rdi") $b,
+                      in("rdi") $b,
                       $(
-                        inlateout("rsi") $c,
+                        in("rsi") $c,
                           $(
-                            inlateout("rdx") $d,
+                            in("rdx") $d,
                               $(
-                                inlateout("r10") $e,
+                                in("r10") $e,
                                   $(
-                                    inlateout("r8") $f,
+                                    in("r8") $f,
                                       $(
-                                        inlateout("r9") $g,
+                                        in("r9") $g,
                                       )?
                                   )?
                               )?
@@ -27,9 +30,15 @@ macro_rules! syscall {
                       )?
                   )?
                   lateout("rax") ret,
+                  lateout("rdi") words[0],
+                  lateout("rsi") words[1],
+                  lateout("rdx") words[2],
+                  lateout("r10") words[3],
+                  lateout("r8") words[4],
+                  lateout("r9") words[5],
                   options(nostack),
               );
-              ret
+              SyscallOut::new(ret, words).into()
           }}
       )+
   };

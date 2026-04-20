@@ -98,15 +98,19 @@ pub fn run() {
             core::mem::transmute::<u64, extern "C" fn(arg: usize) -> usize>(elf.header().entry)
         },
         0,
-    );
+    )
+    .expect("Could not spawn bootstrap process");
     log!(RING_BUFFER, "switch to boostrap process");
-    let prev = bs.switch();
-    log!(RING_BUFFER, "returned to kernel from prev {prev:?}");
+    bs.switch().expect("could not switch");
     loop {
         for (pid, proc) in unsafe { PROCESS_TABLE.as_ref().unwrap().iter() } {
+            log!(RING_BUFFER, "returned to kernel");
+            if *pid == 0 {
+                continue;
+            }
             if proc.blocker.is_none() {
                 log!(RING_BUFFER, "found {pid} can run");
-                switch_process(*pid);
+                switch_process(*pid).expect("Could not switch");
             }
         }
         log!(RING_BUFFER, "idle");

@@ -5,37 +5,39 @@ use crate::{
     *,
 };
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Endpoint;
+
+#[derive(Clone, Copy, Debug)]
 pub struct ReplyEndpoint;
 impl CapType for Endpoint {}
 impl CapType for ReplyEndpoint {}
 
 impl Cap<Endpoint> {
-    pub fn create() -> Result<Cap<Endpoint>, &'static str> {
-        let res = unsafe { syscall0(SYS_CREATE_ENDPOINT) };
+    pub fn create() -> SyscallResult<Cap<Endpoint>> {
+        let res = unsafe { syscall0(SYS_CREATE_ENDPOINT) }.map(|words| words[0])?;
         Ok(Cap::<Endpoint>::new(res))
     }
 
-    pub fn send(self, message: Message) -> Result<Message, IpcError> {
+    pub fn send(self, message: Message) -> SyscallResult<IpcStatus> {
         send(self.handle, message)
     }
 
-    pub fn recv(self) -> Result<(Cap<ReplyEndpoint>, Message), IpcError> {
+    pub fn recv(self) -> SyscallResult<(Cap<ReplyEndpoint>, Message)> {
         let (handle, msg) = recv(self.handle)?;
         Ok((Cap::new(handle), msg))
     }
 }
 
 impl Cap<ReplyEndpoint> {
-    pub fn reply(self, message: Message) -> Result<(), IpcError> {
+    pub fn reply(self, message: Message) -> SyscallResult<()> {
         reply(self.handle, message)
     }
 }
 
-fn send(ep_id: CapHandle, mut message: Message) -> Result<Message, IpcError> {
-    let (code, words) = unsafe {
-        out_syscall5(
+fn send(ep_id: CapHandle, message: Message) -> SyscallResult<IpcStatus> {
+    unsafe {
+        syscall5(
             SYS_SEND,
             ep_id,
             message.data[0],
@@ -43,43 +45,27 @@ fn send(ep_id: CapHandle, mut message: Message) -> Result<Message, IpcError> {
             message.data[2],
             message.data[3],
         )
-    };
-    message.data = *words[1..5].as_array().expect("Not able to unwrap");
-    if code == 0 {
-        Ok(message)
-    } else {
-        Err(code.into())
     }
+    .map(|words| unsafe { mem::transmute::<usize, IpcStatus>(words[0]) })
 }
 
-fn recv(ep_id: CapHandle) -> Result<(CapHandle, Message), IpcError> {
-    let (code, words) = unsafe { out_syscall5(SYS_RECV, ep_id, 0, 0, 0, 0) };
-
-    if code == 0 {
-        Ok((
-            code,
-            Message {
-                data: *words[1..5].as_array().unwrap(),
-            },
-        ))
-    } else {
-        Err(code.into())
-    }
+fn recv(ep_id: CapHandle) -> SyscallResult<(CapHandle, Message)> {
+    unsafe { syscall1(SYS_RECV, ep_id) }
+        .map(|words| (words[0], (*words[1..5].as_array::<4>().unwrap()).into()))
 }
 
-fn reply(ep_id: CapHandle, message: Message) -> Result<(), IpcError> {
-    let code = unsafe {
+fn reply(ep_id: CapHandle, message: Message) -> SyscallResult<()> {
+    unsafe {
         syscall5(
-            SYS_RECV,
+            SYS_REPLY,
             ep_id,
             message.data[0],
             message.data[1],
             message.data[2],
             message.data[3],
         )
-    };
-
-    if code == 0 { Ok(()) } else { Err(code.into()) }
+    }
+    .map(|_| ())
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -119,30 +105,43 @@ impl From<&str> for Message {
     }
 }
 
+impl From<[u8; 32]> for Message {
+    fn from(value: [u8; 32]) -> Self {
+        let mut buf = [0usize; 4];
+        let words = value
+            .chunks(8)
+            .map(|chunk| usize::from_be_bytes(*chunk.as_array().unwrap()));
+        for (i, word) in words.enumerate() {
+            buf[i] = word;
+        }
+
+        buf.into()
+    }
+}
+
 impl From<[usize; 4]> for Message {
     fn from(value: [usize; 4]) -> Self {
         Self { data: value }
     }
 }
 
-#[allow(clippy::enum_clike_unportable_variant)]
-#[derive(Debug)]
-#[repr(usize)]
-pub enum IpcError {
-    Ok = 0,
-    WrongRights = 1,
-    Empty = 2,
-    Full = 3,
-    InvalidEndpoint = 4,
-    Unknown = usize::MAX,
+impl From<Message> for [usize; 4] {
+    fn from(value: Message) -> Self {
+        value.data
+    }
 }
 
-impl From<usize> for IpcError {
-    fn from(value: usize) -> Self {
-        if (0..=4).contains(&value) {
-            unsafe { mem::transmute::<usize, IpcError>(value) }
-        } else {
-            IpcError::Unknown
-        }
-    }
+#[derive(Debug)]
+#[repr(C)]
+pub enum IpcError {
+    Empty,
+    Full,
+    InvalidEndpoint,
+}
+
+#[derive(Debug)]
+#[repr(usize)]
+pub enum IpcStatus {
+    WouldBlock,
+    Ready,
 }

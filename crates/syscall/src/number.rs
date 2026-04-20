@@ -1,8 +1,9 @@
 pub const SYS_SWITCH: usize = 0;
 pub const SYS_GET_PID: usize = 1;
 pub const SYS_SPAWN: usize = 2;
-pub const SYS_EXIT: usize = 3;
-pub const SYS_WAIT: usize = 4;
+pub const SYS_YIELD: usize = 3;
+pub const SYS_SYS_KILL: usize = 4;
+
 pub const SYS_LOG: usize = 5;
 
 pub const SYS_CREATE_ENDPOINT: usize = 6;

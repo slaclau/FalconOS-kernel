@@ -1,15 +1,14 @@
 use core::{
     cmp::{max, min},
-    fmt::{Debug, Write},
+    fmt::Debug,
 };
 
-use syscall::cap::Rights;
+use syscall::{SyscallError, cap::Rights};
 
 use crate::{
-    PhysicalAddress, RING_BUFFER,
+    PhysicalAddress,
     ipc::EndpointId,
-    log,
-    process::{KERNEL_TASK_ID, PROCESS_TABLE, Process, ProcessId},
+    process::{KERNEL_TASK_ID, PROCESS_TABLE, ProcessId},
 };
 
 #[allow(unused)]
@@ -18,6 +17,7 @@ pub enum KernelObject {
     Untyped { addr: PhysicalAddress, size: usize },
     Process(ProcessId),
     Endpoint(EndpointId),
+    ReplyEndpoint(EndpointId),
     Frame { addr: PhysicalAddress, size: usize },
 }
 
@@ -28,20 +28,20 @@ pub struct Capability {
 }
 
 impl Capability {
-    pub fn derive(self, mask: Rights) -> Result<Self, &'static str> {
+    pub fn derive(self, mask: Rights) -> Result<Self, SyscallError> {
         if !self.rights.grant() {
-            return Err("does not have grant rights");
+            return Err(SyscallError::RightsError(syscall::RightsError::NoGrant));
         }
         Ok(Self {
             object: self.object,
             rights: self.rights & mask,
         })
     }
-    pub fn has_rights(self, rights: Rights) -> Result<(), &'static str> {
+    pub fn has_rights(self, rights: Rights) -> Result<(), SyscallError> {
         if self.rights.matches(rights) {
             Ok(())
         } else {
-            Err("invalid rights")
+            Err(SyscallError::RightsError(syscall::RightsError::Unknown))
         }
     }
 }
@@ -67,7 +67,9 @@ pub fn init(
                     },
                     rights: Rights::RWE,
                 };
-                kernel_task.insert_cap(cap).unwrap();
+                kernel_task
+                    .insert_cap(cap)
+                    .expect("Could not insert initial cap");
             }
         }
         if region[1] > reserved[1] {
@@ -78,27 +80,10 @@ pub fn init(
                     object: KernelObject::Untyped { addr: lower, size },
                     rights: Rights::RWE,
                 };
-                kernel_task.insert_cap(cap).unwrap();
+                kernel_task
+                    .insert_cap(cap)
+                    .expect("Could not insert initial cap");
             }
         }
     }
-}
-
-pub fn derive_cap(pid: ProcessId, cap_id: usize, mask: Rights) -> Result<usize, &'static str> {
-    let proc = Process::get_mut(pid);
-    proc.derive_cap(cap_id, mask)
-}
-
-pub fn move_cap(
-    source_pid: ProcessId,
-    source_cap_id: usize,
-    target_process_cap_id: ProcessId,
-) -> Result<usize, &'static str> {
-    let proc = Process::get_mut(source_pid);
-    log!(
-        RING_BUFFER,
-        "move cap {source_cap_id} to proc cap {target_process_cap_id}"
-    );
-    proc.dump_caps();
-    proc.move_cap(source_cap_id, target_process_cap_id)
 }

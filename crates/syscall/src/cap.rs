@@ -13,7 +13,7 @@ pub struct Cap<T: CapType> {
     phantom: PhantomData<T>,
 }
 
-impl<T: CapType> Cap<T> {
+impl<T: CapType + Debug> Cap<T> {
     pub(crate) fn new(handle: CapHandle) -> Self {
         Self {
             handle,
@@ -21,15 +21,16 @@ impl<T: CapType> Cap<T> {
         }
     }
 
-    pub fn derive(self, mask: Rights) -> Self {
-        let handle = derive_cap(self.handle, mask);
-        Self {
+    pub fn derive(self, mask: Rights) -> SyscallResult<Self> {
+        let handle = derive_cap(self.handle, mask)?;
+        Ok(Self {
             handle,
             phantom: PhantomData,
-        }
+        })
     }
 
-    pub fn r#move(self, process: Cap<Process>) -> CapHandle {
+    pub fn r#move(self, process: Cap<Process>) -> SyscallResult<CapHandle> {
+        format_log!("move cap {self:?} to {process:?}");
         move_cap(process.handle, self.handle)
     }
 
@@ -106,12 +107,12 @@ impl From<usize> for Rights {
     }
 }
 
-fn derive_cap(cap_id: CapHandle, mask: Rights) -> usize {
-    unsafe { syscall2(SYS_DERIVE_CAP, cap_id, mask.0 as usize) }
+fn derive_cap(cap_id: CapHandle, mask: Rights) -> SyscallResult<CapHandle> {
+    unsafe { syscall2(SYS_DERIVE_CAP, cap_id, mask.0 as usize) }.map(|words| words[0])
 }
 
-fn move_cap(process_handle: CapHandle, cap_handle: CapHandle) -> usize {
-    unsafe { syscall2(SYS_MOVE_CAP, process_handle, cap_handle) }
+fn move_cap(process_handle: CapHandle, cap_handle: CapHandle) -> SyscallResult<CapHandle> {
+    unsafe { syscall2(SYS_MOVE_CAP, process_handle, cap_handle) }.map(|words| words[0])
 }
 
 #[allow(clippy::enum_clike_unportable_variant)]

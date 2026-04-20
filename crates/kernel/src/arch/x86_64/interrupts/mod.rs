@@ -1,11 +1,11 @@
-use core::{arch::asm, fmt::Write, sync::atomic::AtomicUsize};
+use core::{arch::asm, fmt::Write, mem, sync::atomic::AtomicUsize};
 
 use hal::{self};
 use macros::{assign_handlers, make_handlers};
 use spin::{Mutex, Once};
 use syscall::{
-    SYS_CREATE_ENDPOINT, SYS_DERIVE_CAP, SYS_EXIT, SYS_GET_PID, SYS_LOG, SYS_MOVE_CAP, SYS_RECV,
-    SYS_SEND, SYS_SPAWN, SYS_SWITCH, SYS_WAIT,
+    SYS_CREATE_ENDPOINT, SYS_DERIVE_CAP, SYS_GET_PID, SYS_LOG, SYS_MOVE_CAP, SYS_RECV, SYS_REPLY,
+    SYS_SEND, SYS_SPAWN, SYS_SWITCH, SYS_YIELD, SyscallError,
 };
 
 use crate::{
@@ -20,8 +20,9 @@ use crate::{
     },
     log,
     syscall::{
-        handle_sys_derive_cap, handle_sys_exit, handle_sys_get_pid, handle_sys_log,
-        handle_sys_move_cap, handle_sys_spawn, handle_sys_switch, handle_sys_wait,
+        SyscallReturn, handle_sys_create_endpoint, handle_sys_derive_cap, handle_sys_get_pid,
+        handle_sys_log, handle_sys_move_cap, handle_sys_recv, handle_sys_reply, handle_sys_send,
+        handle_sys_spawn, handle_sys_switch, handle_sys_yield,
     },
 };
 
@@ -249,31 +250,43 @@ pub struct SyscallFrame {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn syscall_handler(frame: &mut SyscallFrame) {
-    let ret = match frame.rax {
+    let ret: SyscallReturn = match frame.rax {
         SYS_SWITCH => handle_sys_switch(frame.rdi),
         SYS_GET_PID => handle_sys_get_pid(),
         SYS_SPAWN => handle_sys_spawn(frame.rdi, frame.rsi),
-        SYS_EXIT => handle_sys_exit(frame.rdi),
-        SYS_WAIT => handle_sys_wait(frame.rdi),
+        SYS_YIELD => handle_sys_yield(),
         SYS_LOG => handle_sys_log(frame.rdi, frame.rsi),
-        // SYS_CREATE_ENDPOINT => handle_sys_create_endpoint(),
-        // SYS_SEND => handle_sys_send(
-        //     frame.rdi,
-        //     [frame.rsi, frame.rdx, frame.r10, frame.r8].into(),
-        // ),
-        // SYS_RECV => {
-        //     let (res, msg) = handle_sys_recv(frame.rdi);
-        //     frame.rsi = msg.data[0];
-        //     frame.rdx = msg.data[1];
-        //     frame.r10 = msg.data[2];
-        //     frame.r8 = msg.data[3];
-        //     res
-        // }
+        SYS_CREATE_ENDPOINT => handle_sys_create_endpoint(),
+        SYS_SEND => handle_sys_send(
+            frame.rdi,
+            [frame.rsi, frame.rdx, frame.r10, frame.r8].into(),
+        ),
+        SYS_RECV => handle_sys_recv(frame.rdi),
+        SYS_REPLY => handle_sys_reply(
+            frame.rdi,
+            [frame.rsi, frame.rdx, frame.r10, frame.r8].into(),
+        ),
         SYS_DERIVE_CAP => handle_sys_derive_cap(frame.rdi, frame.rsi.into()),
         SYS_MOVE_CAP => handle_sys_move_cap(frame.rdi, frame.rsi),
         _ => unimplemented!("unhandled syscall {}", frame.rax),
     };
-    frame.rax = ret;
+    // log!(RING_BUFFER, "got {ret:?} from handling syscall {frame:?}");
+    match ret {
+        Ok(words) => {
+            frame.rax = 0;
+            frame.rdi = words[0];
+            frame.rsi = words[1];
+            frame.rdx = words[2];
+            frame.r10 = words[3];
+            frame.r8 = words[4];
+            frame.r9 = words[5];
+        }
+        Err(error) => {
+            let code = unsafe { mem::transmute::<SyscallError, usize>(error) };
+            log!(RING_BUFFER, "err maps to code {code}");
+            frame.rax = code;
+        }
+    }
 }
 
 fn shared_handler(irq_no: u64, stack_frame: idt::StackFrame) {

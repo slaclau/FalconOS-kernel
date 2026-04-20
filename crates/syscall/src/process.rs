@@ -10,33 +10,33 @@ pub struct Process {}
 impl CapType for Process {}
 
 impl Cap<Process> {
-    pub fn spawn(entry: extern "C" fn(arg: usize) -> usize, arg: usize) -> Self {
-        let handle = spawn(entry, arg);
-        Self::new(handle)
+    pub fn spawn(entry: extern "C" fn(arg: usize) -> usize, arg: usize) -> SyscallResult<Self> {
+        let handle = spawn(entry, arg)?;
+        Ok(Self::new(handle))
     }
-    pub fn switch(self) -> Self {
-        let handle = switch(self.handle);
-        Self::new(handle)
+    pub fn switch(self) -> SyscallResult<()> {
+        switch(self.handle)
     }
 }
 
-fn switch(process_cap: CapHandle) -> CapHandle {
-    unsafe { syscall1(SYS_SWITCH, process_cap) }
+fn switch(process_cap: CapHandle) -> SyscallResult<()> {
+    unsafe { syscall1(SYS_SWITCH, process_cap) }.map(|_| ())
 }
 
-pub fn get_pid() -> ProcessId {
-    unsafe { syscall0(SYS_GET_PID) }
+fn spawn(entry: extern "C" fn(arg: usize) -> usize, arg: usize) -> SyscallResult<CapHandle> {
+    unsafe { syscall2(SYS_SPAWN, entry as usize, arg) }.map(|words| words[0])
 }
 
-fn spawn(entry: extern "C" fn(arg: usize) -> usize, arg: usize) -> CapHandle {
-    unsafe { syscall2(SYS_SPAWN, entry as usize, arg) }
+pub fn get_pid() -> SyscallResult<ProcessId> {
+    unsafe { syscall0(SYS_GET_PID) }.map(|words| words[0])
 }
 
-pub fn exit(exit_code: usize) -> ! {
-    unsafe { syscall1(SYS_EXIT, exit_code) };
-    unreachable!()
+pub fn r#yield() -> SyscallResult<()> {
+    unsafe { syscall0(SYS_YIELD) }.map(|_| ())
 }
 
-pub fn wait(pid: ProcessId) -> usize {
-    unsafe { syscall1(SYS_WAIT, pid) }
+#[derive(Debug)]
+#[repr(C)]
+pub enum ProcessError {
+    Unknown,
 }
